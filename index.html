@@ -291,10 +291,25 @@ h1,h2,h3{margin:0;text-wrap:balance}
   background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);
   padding:10px 10px 12px;margin-bottom:16px;
 }
-.cal-head{display:flex;align-items:center;gap:6px;margin-bottom:9px}
+.cal-head{display:flex;align-items:center;gap:6px}
+.cal[data-aperto="true"] .cal-head{margin-bottom:9px}
+.cal-toggle{
+  flex:1;min-width:0;display:flex;align-items:center;gap:7px;
+  background:none;border:0;padding:0;cursor:pointer;color:var(--ink);text-align:left;
+}
+.cal-toggle svg{
+  width:16px;height:16px;flex:none;stroke:currentColor;fill:none;
+  stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;transition:transform .18s;
+}
+.cal[data-aperto="false"] .cal-toggle svg{transform:rotate(-90deg)}
+.cal[data-aperto="false"] .cal-dow,
+.cal[data-aperto="false"] .cal-grid,
+.cal[data-aperto="false"] .cal-legenda,
+.cal[data-aperto="false"] .cal-nav{display:none}
 .cal-mese{
-  flex:1;text-align:center;font-family:var(--display);font-size:16.5px;font-weight:600;
-  text-transform:capitalize;letter-spacing:.01em;
+  font-family:var(--display);font-size:16.5px;font-weight:600;
+  text-transform:capitalize;letter-spacing:.01em;white-space:nowrap;
+  overflow:hidden;text-overflow:ellipsis;
 }
 .cal-nav{
   width:30px;height:30px;flex:none;border-radius:50%;border:1px solid var(--line-strong);
@@ -463,6 +478,26 @@ code{font-family:var(--mono);font-size:12.5px;background:var(--surface-2);paddin
 .head-block .page-title{margin-bottom:0}
 .head-block .chips{padding-bottom:2px}
 
+/* sezione che raggruppa una famiglia di prodotti */
+.gruppo{display:flex;flex-direction:column}
+.gruppo-head{
+  width:100%;display:flex;align-items:center;gap:9px;text-align:left;cursor:pointer;
+  background:var(--surface-2);border:1px solid var(--line);border-radius:var(--radius);
+  padding:11px 12px;color:var(--ink);
+}
+.gruppo-head svg{
+  width:16px;height:16px;flex:none;stroke:currentColor;fill:none;
+  stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;transition:transform .18s;
+}
+.gruppo[data-aperto="false"] .gruppo-head svg{transform:rotate(-90deg)}
+.g-nome{flex:1;font-weight:600;font-size:15px}
+.g-conta{font-family:var(--mono);font-size:12px;color:var(--ink-3)}
+.gruppo-corpo{
+  display:flex;flex-direction:column;gap:7px;
+  margin:7px 0 0 13px;padding-left:12px;border-left:2px solid var(--line);
+}
+.gruppo[data-aperto="false"] .gruppo-corpo{display:none}
+
 /* riga articolo: nome, quantità, cestino */
 .item.art{grid-template-columns:1fr auto auto;gap:8px}
 .item-main{
@@ -617,7 +652,7 @@ code{font-family:var(--mono);font-size:12.5px;background:var(--surface-2);paddin
    ============================================================ */
 
 /* ---------- costanti di dominio ---------- */
-const VERSIONE = "2026-09-05 · 7";   // da alzare a ogni pubblicazione
+const VERSIONE = "2026-09-05 · 9";   // da alzare a ogni pubblicazione
 const SEDI = ["Viale Alto Adige","Via Savonarola"];
 const UNITA = ["kg","g","pz","conf","L","vaschette"];
 const TIPI_ATTIVITA = ["Ristorante","Gastronomia","Negozio","Catering","Mensa","Privato"];
@@ -699,7 +734,9 @@ const state = {
   giorno: todayISO(),
   mese: todayISO().slice(0, 7),
   settimana: "",
-  aperti: new Set()
+  aperti: new Set(),
+  gruppiChiusi: new Set(),
+  calendarioChiuso: false
 };
 
 /* --- calendario --- */
@@ -798,6 +835,7 @@ const Store = {
     const cfg = Store.getConfig();
     if(!Store.loadLocal()) seedEsempio();
     puliziaEsempi();
+    aggiornaProdottiIniziali();
     if(!cfg){ Store.mode = "local"; Store.ready = true; setSync("off", "Locale"); render(); return; }
     setSync("wait", "Connessione…");
     render();
@@ -889,36 +927,72 @@ function puliziaEsempi(){
   Store.saveLocal();
 }
 
+/* le orecchiette stanno insieme: il gruppo si ricava dal nome,
+   così una varietà nuova ci finisce dentro da sola */
+const GRUPPI = ["Orecchiette"];
+function gruppoDi(a){
+  const n = String(a.nome || "");
+  return GRUPPI.find(g => n.toLowerCase().startsWith(g.toLowerCase())) || "";
+}
+function etichettaArticolo(a, intero){
+  const g = gruppoDi(a);
+  if(intero || !g) return a.nome;
+  const resto = a.nome.slice(g.length).trim();
+  return resto ? resto.charAt(0).toUpperCase() + resto.slice(1) : a.nome;
+}
+
+const ORECCHIETTE = ["Orecchiette piccole","Orecchiette medie","Orecchiette senatore",
+  "Orecchiette integrali","Orecchiette all'uovo","Orecchiette basilico","Orecchiette nere"];
+const ALTO_ADIGE = ["Strascinati","Strascinati neri","Vermicelli","Cavatelli","Cavatelli rigati",
+  "Capunti","Strozzapreti","Troffiette","Spaghettoni","Paccheri","Calamarata","Sciallatelli",
+  "Gnocchetti","Gnocchetti verdi","Chicche","Tortellini piccoli","Tortellini medi","Raviolini","Pistacchio"];
+const SAVONAROLA = ["Carne","Ricotta e spinaci","Prosciutto e mozzarella","Speck e mortadella",
+  "Burrata","Sorrentina","Murgiana","Pistacchio","Limone","Cacio e pepe","Carciofi","Melanzana",
+  "Tortellini grandi","Tortellini piccoli","Raviolini","Fusilloni","Avellinesi","Rigatoni",
+  "Caserecce","Garganelle","Tubettoni","Pastina vegetale","Crostacei","P.M. No lattosio"];
+
+function prodottiIniziali(){
+  const crea = (nomi, sede, da) => nomi.map((nome, i) => ({
+    id: uid(), nome, sede, quantita: 0, unita: "", scorta_minima: 0,
+    posizione: "", scadenza: "", note: "", ordine: da + i
+  }));
+  return [
+    ...crea(ORECCHIETTE, SEDI[0], 0),
+    ...crea(ALTO_ADIGE,  SEDI[0], 100),
+    ...crea(ORECCHIETTE, SEDI[1], 0),
+    ...crea(SAVONAROLA,  SEDI[1], 100)
+  ];
+}
+
 function seedEsempio(){
-  const t = todayISO();
-  const A = SEDI[0], S = SEDI[1];
-  /* solo qualche prodotto per non aprire su una schermata vuota:
-     ordini e attività si popolano lavorando */
   state.data.attivita = [];
   state.data.ordini = [];
-  state.data.articoli = [
-    {id:uid(), nome:"Orecchiette fresche", sede:A, quantita:5, unita:"kg", scorta_minima:8, posizione:"Cella 1", scadenza:addDays(t,3), note:""},
-    {id:uid(), nome:"Cavatelli", sede:A, quantita:12, unita:"kg", scorta_minima:6, posizione:"Cella 1", scadenza:addDays(t,4), note:""},
-    {id:uid(), nome:"Strascinati", sede:A, quantita:3.5, unita:"kg", scorta_minima:5, posizione:"Cella 1", scadenza:addDays(t,2), note:""},
-    {id:uid(), nome:"Ravioli ricotta e spinaci", sede:A, quantita:40, unita:"vaschette", scorta_minima:20, posizione:"Cella 2", scadenza:addDays(t,5), note:""},
-    {id:uid(), nome:"Semola rimacinata di grano duro", sede:A, quantita:125, unita:"kg", scorta_minima:50, posizione:"Scaffale A", scadenza:"", note:""},
-    {id:uid(), nome:"Orecchiette fresche", sede:S, quantita:7, unita:"kg", scorta_minima:5, posizione:"Banco", scadenza:addDays(t,3), note:""},
-    {id:uid(), nome:"Cavatelli", sede:S, quantita:4, unita:"kg", scorta_minima:5, posizione:"Banco", scadenza:addDays(t,3), note:""},
-    {id:uid(), nome:"Ricotta fresca", sede:S, quantita:6, unita:"kg", scorta_minima:4, posizione:"Cella", scadenza:addDays(t,2), note:""}
-  ];
+  state.data.articoli = prodottiIniziali();
   Store.saveLocal();
+}
+
+/* sui dispositivi che avevano il vecchio elenco finto lo sostituiamo una volta,
+   ma solo se non è stato toccato: se hai aggiunto roba tua non tocco niente */
+function aggiornaProdottiIniziali(){
+  if(LS.get("pastaio.prodottiVeri") === "1") return;
+  const vecchi = ["Orecchiette fresche","Cavatelli","Strascinati","Ravioli ricotta e spinaci",
+    "Semola rimacinata di grano duro","Farina 00","Uova fresche","Ricotta fresca","Vaschette 500 g"];
+  const intatto = state.data.articoli.length > 0 && state.data.articoli.every(a => vecchi.includes(a.nome));
+  if(intatto){ state.data.articoli = prodottiIniziali(); Store.saveLocal(); }
+  LS.set("pastaio.prodottiVeri", "1");
 }
 
 /* ---------- allerte magazzino ---------- */
 function allerta(a){
+  const min = num(a.scorta_minima);
+  if(min > 0 && num(a.quantita) <= min) return "low";
   const g = giorniA(a.scadenza);
-  if(num(a.quantita) <= num(a.scorta_minima)) return "low";
   if(g !== null && g <= 2) return "near";
   return "";
 }
 function contaAllerte(){
-  const sotto = state.data.articoli.filter(a => num(a.quantita) <= num(a.scorta_minima)).length;
-  const scad = state.data.articoli.filter(a => { const g = giorniA(a.scadenza); return g !== null && g <= 2; }).length;
+  const sotto = state.data.articoli.filter(a => allerta(a) === "low").length;
+  const scad = state.data.articoli.filter(a => allerta(a) === "near").length;
   return {sotto, scad};
 }
 function ordiniAperti(){
@@ -1031,7 +1105,28 @@ function viewMagazzino(){
   const q = state.cercaArt.trim().toLowerCase();
   let arts = state.data.articoli.filter(a => sedeDi(a) === state.sede);
   if(q) arts = arts.filter(a => a.nome.toLowerCase().includes(q));
-  arts.sort((a,b) => (allerta(b) ? 1 : 0) - (allerta(a) ? 1 : 0) || a.nome.localeCompare(b.nome, "it"));
+  /* l'ordine dell'elenco è quello del pastificio, non l'alfabetico */
+  arts.sort((a,b) => (a.ordine ?? 9999) - (b.ordine ?? 9999) || a.nome.localeCompare(b.nome, "it"));
+
+  let corpo;
+  if(!arts.length){
+    corpo = vuoto("Nessun prodotto", q ? "Nessun risultato per questa ricerca." : `Aggiungi il primo prodotto di ${state.sede}.`);
+  } else if(q){
+    corpo = `<div class="list">${arts.map(a => cardArticolo(a, true)).join("")}</div>`;   // cercando, elenco piatto
+  } else {
+    const gruppi = new Map();
+    const sciolti = [];
+    for(const a of arts){
+      const g = gruppoDi(a);
+      if(!g){ sciolti.push(a); continue; }
+      if(!gruppi.has(g)) gruppi.set(g, []);
+      gruppi.get(g).push(a);
+    }
+    corpo = `<div class="list">
+      ${[...gruppi].map(([nome, lista]) => sezioneGruppo(nome, lista)).join("")}
+      ${sciolti.map(a => cardArticolo(a)).join("")}
+    </div>`;
+  }
 
   return `
     <div class="head-block">
@@ -1048,18 +1143,29 @@ function viewMagazzino(){
         </button>` : ""}
       </div>
     </div>
-    ${arts.length
-      ? `<div class="list">${arts.map(cardArticolo).join("")}</div>`
-      : vuoto("Nessun prodotto", q ? "Nessun risultato per questa ricerca." : `Aggiungi il primo prodotto di ${state.sede}.`)}
+    ${corpo}
     ${bloccoConferma()}
   `;
 }
 
-function cardArticolo(a){
+function sezioneGruppo(nome, lista){
+  const aperto = !state.gruppiChiusi.has(nome);
+  return `
+    <section class="gruppo" data-aperto="${aperto}">
+      <button class="gruppo-head" type="button" data-gruppo="${esc(nome)}" aria-expanded="${aperto}">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+        <span class="g-nome">${esc(nome)}</span>
+        <span class="g-conta">${lista.length}</span>
+      </button>
+      <div class="gruppo-corpo">${lista.map(a => cardArticolo(a)).join("")}</div>
+    </section>`;
+}
+
+function cardArticolo(a, nomeIntero){
   return `
     <article class="item art" data-alert="${allerta(a)}">
       <button class="item-main" type="button" data-edit-art="${a.id}">
-        <span class="item-name">${esc(a.nome)}</span>
+        <span class="item-name">${esc(etichettaArticolo(a, nomeIntero))}</span>
       </button>
       <div class="item-qty">
         <button class="step" type="button" data-step="-1" data-art="${a.id}" aria-label="Diminuisci ${esc(a.nome)}">−</button>
@@ -1105,12 +1211,15 @@ function viewOrdini(){
     <div class="head-block">
       <h1 class="page-title">Ordini</h1>
     </div>
-    <div class="cal">
+    <div class="cal" data-aperto="${!state.calendarioChiuso}">
       <div class="cal-head">
+        <button class="cal-toggle" type="button" id="apriCalendario" aria-expanded="${!state.calendarioChiuso}">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+          <span class="cal-mese">${esc(meseLabel(state.mese))}</span>
+        </button>
         <button class="cal-nav" type="button" data-mese="-1" aria-label="Mese precedente">
           <svg viewBox="0 0 24 24"><path d="m14.5 5-7 7 7 7"/></svg>
         </button>
-        <span class="cal-mese">${esc(meseLabel(state.mese))}</span>
         <button class="cal-nav" type="button" data-mese="1" aria-label="Mese successivo">
           <svg viewBox="0 0 24 24"><path d="m9.5 5 7 7-7 7"/></svg>
         </button>
@@ -1519,7 +1628,7 @@ document.addEventListener("click", async e => {
   const hit = sel => t.closest(sel);
 
   const tabBtn = hit("[data-tab]");
-  if(tabBtn){ state.tab = tabBtn.dataset.tab; render(); return; }
+  if(tabBtn){ state.tab = tabBtn.dataset.tab; state.calendarioChiuso = false; render(); return; }
 
   if(hit("[data-close]") || t === $("#overlay")){ chiudiSheet(); return; }
 
@@ -1535,6 +1644,16 @@ document.addEventListener("click", async e => {
       const esito = await Notification.requestPermission();
       toast(esito === "granted" ? "Notifiche attive su questo dispositivo" : "Notifiche non consentite");
     } catch { toast("Questo browser non gestisce le notifiche"); }
+    render();
+    return;
+  }
+
+  if(hit("#apriCalendario")){ state.calendarioChiuso = !state.calendarioChiuso; render(); return; }
+
+  const gr = hit("[data-gruppo]");
+  if(gr){
+    const g = gr.dataset.gruppo;
+    state.gruppiChiusi.has(g) ? state.gruppiChiusi.delete(g) : state.gruppiChiusi.add(g);
     render();
     return;
   }
