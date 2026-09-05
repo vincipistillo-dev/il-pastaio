@@ -617,7 +617,7 @@ code{font-family:var(--mono);font-size:12.5px;background:var(--surface-2);paddin
    ============================================================ */
 
 /* ---------- costanti di dominio ---------- */
-const VERSIONE = "2026-09-05 · 4";   // da alzare a ogni pubblicazione
+const VERSIONE = "2026-09-05 · 5";   // da alzare a ogni pubblicazione
 const SEDI = ["Viale Alto Adige","Via Savonarola"];
 const UNITA = ["kg","g","pz","conf","L","vaschette"];
 const TIPI_ATTIVITA = ["Ristorante","Gastronomia","Negozio","Catering","Mensa","Privato"];
@@ -879,40 +879,20 @@ function setSync(st, txt){
 /* ---------- dati di esempio ---------- */
 function seedEsempio(){
   const t = todayISO();
-  const a1 = {id:uid(), nome:"Trattoria del Corso", tipo:"Ristorante", telefono:"0883 000111", indirizzo:"Corso Cavour 12, Andria", note:""};
-  const a2 = {id:uid(), nome:"Gastronomia Sant'Andrea", tipo:"Gastronomia", telefono:"0883 000222", indirizzo:"Via Bologna 4, Andria", note:"Ritiro entro le 9:00"};
-  const a3 = {id:uid(), nome:"Masseria Le Torri", tipo:"Catering", telefono:"333 0000333", indirizzo:"SP 231 km 8, Andria", note:""};
-  state.data.attivita = [a1, a2, a3];
   const A = SEDI[0], S = SEDI[1];
+  /* solo qualche prodotto per non aprire su una schermata vuota:
+     ordini e attività si popolano lavorando */
+  state.data.attivita = [];
+  state.data.ordini = [];
   state.data.articoli = [
     {id:uid(), nome:"Orecchiette fresche", sede:A, quantita:5, unita:"kg", scorta_minima:8, posizione:"Cella 1", scadenza:addDays(t,3), note:""},
     {id:uid(), nome:"Cavatelli", sede:A, quantita:12, unita:"kg", scorta_minima:6, posizione:"Cella 1", scadenza:addDays(t,4), note:""},
     {id:uid(), nome:"Strascinati", sede:A, quantita:3.5, unita:"kg", scorta_minima:5, posizione:"Cella 1", scadenza:addDays(t,2), note:""},
-    {id:uid(), nome:"Ravioli ricotta e spinaci", sede:A, quantita:40, unita:"vaschette", scorta_minima:20, posizione:"Cella 2", scadenza:addDays(t,5), note:"Vaschette da 500 g"},
-    {id:uid(), nome:"Semola rimacinata di grano duro", sede:A, quantita:125, unita:"kg", scorta_minima:50, posizione:"Scaffale A", scadenza:"", note:"Sacchi da 25 kg"},
-    {id:uid(), nome:"Farina 00", sede:A, quantita:18, unita:"kg", scorta_minima:25, posizione:"Scaffale A", scadenza:"", note:""},
-    {id:uid(), nome:"Uova fresche", sede:A, quantita:180, unita:"pz", scorta_minima:120, posizione:"Cella 2", scadenza:addDays(t,12), note:""},
+    {id:uid(), nome:"Ravioli ricotta e spinaci", sede:A, quantita:40, unita:"vaschette", scorta_minima:20, posizione:"Cella 2", scadenza:addDays(t,5), note:""},
+    {id:uid(), nome:"Semola rimacinata di grano duro", sede:A, quantita:125, unita:"kg", scorta_minima:50, posizione:"Scaffale A", scadenza:"", note:""},
     {id:uid(), nome:"Orecchiette fresche", sede:S, quantita:7, unita:"kg", scorta_minima:5, posizione:"Banco", scadenza:addDays(t,3), note:""},
     {id:uid(), nome:"Cavatelli", sede:S, quantita:4, unita:"kg", scorta_minima:5, posizione:"Banco", scadenza:addDays(t,3), note:""},
-    {id:uid(), nome:"Ricotta fresca", sede:S, quantita:6, unita:"kg", scorta_minima:4, posizione:"Cella", scadenza:addDays(t,2), note:""},
-    {id:uid(), nome:"Vaschette 500 g", sede:S, quantita:220, unita:"pz", scorta_minima:300, posizione:"Retro", scadenza:"", note:"Da riordinare"}
-  ];
-  const art = state.data.articoli;
-  const ref = n => { const a = art.find(x => x.nome === n); return a ? a.id : null; };
-  state.data.ordini = [
-    {id:uid(), data:t, attivita_id:a1.id, attivita_nome:a1.nome, ora:"11:00", stato:"Da preparare", note:"Consegna al banco, non al magazzino.",
-     righe:[{articolo_id:ref("Orecchiette fresche"), nome:"Orecchiette fresche", quantita:4, unita:"kg", fatto:true},
-            {articolo_id:ref("Cavatelli"), nome:"Cavatelli", quantita:2, unita:"kg", fatto:false}], scaricato:false},
-    {id:uid(), data:t, attivita_id:a2.id, attivita_nome:a2.nome, ora:"08:30", stato:"Completato", note:"",
-     righe:[{articolo_id:ref("Ravioli ricotta e spinaci"), nome:"Ravioli ricotta e spinaci", quantita:12, unita:"vaschette", fatto:true}], scaricato:true},
-    {id:uid(), data:addDays(t,1), attivita_id:a3.id, attivita_nome:a3.nome, ora:"17:00", stato:"Da preparare", note:"Matrimonio, 120 coperti.",
-     righe:[{articolo_id:ref("Orecchiette fresche"), nome:"Orecchiette fresche", quantita:15, unita:"kg", fatto:false},
-            {articolo_id:ref("Strascinati"), nome:"Strascinati", quantita:8, unita:"kg", fatto:false}], scaricato:false},
-    {id:uid(), data:addDays(t,2), attivita_id:a1.id, attivita_nome:a1.nome, ora:"10:00", stato:"Da preparare", note:"",
-     righe:[{articolo_id:ref("Cavatelli"), nome:"Cavatelli", quantita:5, unita:"kg", fatto:false}], scaricato:false},
-    {id:uid(), data:addDays(t,4), attivita_id:a2.id, attivita_nome:a2.nome, ora:"08:30", stato:"Da preparare", note:"",
-     righe:[{articolo_id:ref("Strascinati"), nome:"Strascinati", quantita:6, unita:"kg", fatto:false},
-            {articolo_id:ref("Ravioli ricotta e spinaci"), nome:"Ravioli ricotta e spinaci", quantita:20, unita:"vaschette", fatto:false}], scaricato:false}
+    {id:uid(), nome:"Ricotta fresca", sede:S, quantita:6, unita:"kg", scorta_minima:4, posizione:"Cella", scadenza:addDays(t,2), note:""}
   ];
   Store.saveLocal();
 }
