@@ -219,11 +219,21 @@ h1,h2,h3{margin:0;text-wrap:balance}
 
 .toolbar{display:flex;gap:8px;align-items:center;margin-bottom:12px;flex-wrap:wrap}
 .search{position:relative;flex:1;min-width:150px}
-.search input{padding-left:33px}
-.search svg{
+.search input{
+  width:100%;background:var(--surface);border:1px solid var(--line-strong);
+  border-radius:var(--radius-sm);padding:9px 34px 9px 33px;
+}
+.search input:focus{border-color:var(--grano);outline:none}
+.search .lente{
   position:absolute;left:10px;top:50%;transform:translateY(-50%);
   width:16px;height:16px;stroke:var(--ink-3);fill:none;stroke-width:2;pointer-events:none;
 }
+.svuota{
+  position:absolute;right:5px;top:50%;transform:translateY(-50%);
+  width:26px;height:26px;border:0;background:none;padding:0;cursor:pointer;
+  display:grid;place-items:center;color:var(--ink-3);
+}
+.svuota svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2.2;stroke-linecap:round}
 
 .chips{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;margin-bottom:12px;scrollbar-width:thin}
 .chip{
@@ -607,6 +617,7 @@ code{font-family:var(--mono);font-size:12.5px;background:var(--surface-2);paddin
    ============================================================ */
 
 /* ---------- costanti di dominio ---------- */
+const VERSIONE = "2026-09-05 · 4";   // da alzare a ogni pubblicazione
 const SEDI = ["Viale Alto Adige","Via Savonarola"];
 const UNITA = ["kg","g","pz","conf","L","vaschette"];
 const TIPI_ATTIVITA = ["Ristorante","Gastronomia","Negozio","Catering","Mensa","Privato"];
@@ -1037,8 +1048,12 @@ function viewMagazzino(){
     </div>
     <div class="toolbar">
       <div class="search">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
-        <input type="search" id="cercaArt" placeholder="Cerca prodotto" value="${esc(state.cercaArt)}" aria-label="Cerca articolo">
+        <svg class="lente" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+        <input type="text" inputmode="search" id="cercaArt" placeholder="Cerca prodotto"
+               value="${esc(state.cercaArt)}" aria-label="Cerca prodotto" autocomplete="off">
+        ${state.cercaArt ? `<button class="svuota" type="button" id="svuotaCerca" aria-label="Cancella la ricerca">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+        </button>` : ""}
       </div>
     </div>
     ${arts.length
@@ -1276,6 +1291,7 @@ function viewImpostazioni(){
       <div class="kv"><span>Ordini registrati</span><span>${ordini.length}</span></div>
       <div class="kv"><span>Attività richiedenti</span><span>${attivita.length}</span></div>
       <div class="kv"><span>Modalità</span><span>${Store.mode === "sync" ? "sincronizzata" : "locale"}</span></div>
+      <div class="kv"><span>Versione dell'app</span><span>${VERSIONE}</span></div>
     </div>
 
     <div class="card">
@@ -1346,7 +1362,7 @@ function chiudiSheet(){
 
 function sheetArticolo(id){
   const a = state.data.articoli.find(x => x.id === id) ||
-    {id:"", nome:"", sede:state.sede, quantita:"", scadenza:""};
+    {id:"", nome:"", sede:state.sede, quantita:""};
   apriSheet(id ? "Modifica prodotto" : "Nuovo prodotto", `
     <form id="formArt" data-id="${esc(a.id)}">
       <div class="field">
@@ -1357,15 +1373,9 @@ function sheetArticolo(id){
         <label for="fSede">Punto vendita</label>
         <select id="fSede" name="sede">${SEDI.map(v => `<option ${v === sedeDi(a) ? "selected" : ""}>${v}</option>`).join("")}</select>
       </div>
-      <div class="grid2">
-        <div class="field">
-          <label for="fQta">Quantità</label>
-          <input id="fQta" name="quantita" inputmode="decimal" value="${esc(a.quantita)}" required>
-        </div>
-        <div class="field">
-          <label for="fScad">Scadenza</label>
-          <input id="fScad" name="scadenza" type="date" value="${esc(a.scadenza || "")}">
-        </div>
+      <div class="field">
+        <label for="fQta">Quantità</label>
+        <input id="fQta" name="quantita" inputmode="decimal" value="${esc(a.quantita)}" required>
       </div>
       <div class="sheet-foot">
         ${id ? `<button class="btn btn-danger" type="button" data-del-art="${esc(a.id)}">Elimina</button>` : ""}
@@ -1523,6 +1533,8 @@ document.addEventListener("click", async e => {
   if(tabBtn){ state.tab = tabBtn.dataset.tab; LS.set("pastaio.tab", state.tab); render(); return; }
 
   if(hit("[data-close]") || t === $("#overlay")){ chiudiSheet(); return; }
+
+  if(hit("#svuotaCerca")){ state.cercaArt = ""; render(); return; }
 
   if(hit("#confermaSit")){ await confermaSituazione(); return; }
 
@@ -1702,11 +1714,11 @@ document.addEventListener("submit", async e => {
       scorta_minima: num(vecchio.scorta_minima),
       posizione: vecchio.posizione || "",
       note: vecchio.note || "",
+      scadenza: vecchio.scadenza || "",
       id: f.dataset.id || uid(),
       nome: d.nome.trim(),
       sede: d.sede,
-      quantita: num(d.quantita),
-      scadenza: d.scadenza || ""
+      quantita: num(d.quantita)
     });
     chiudiSheet(); toast("Prodotto salvato"); return;
   }
