@@ -617,7 +617,7 @@ code{font-family:var(--mono);font-size:12.5px;background:var(--surface-2);paddin
    ============================================================ */
 
 /* ---------- costanti di dominio ---------- */
-const VERSIONE = "2026-09-05 · 5";   // da alzare a ogni pubblicazione
+const VERSIONE = "2026-09-05 · 6";   // da alzare a ogni pubblicazione
 const SEDI = ["Viale Alto Adige","Via Savonarola"];
 const UNITA = ["kg","g","pz","conf","L","vaschette"];
 const TIPI_ATTIVITA = ["Ristorante","Gastronomia","Negozio","Catering","Mensa","Privato"];
@@ -797,6 +797,7 @@ const Store = {
   async init(){
     const cfg = Store.getConfig();
     if(!Store.loadLocal()) seedEsempio();
+    puliziaEsempi();
     if(!cfg){ Store.mode = "local"; Store.ready = true; setSync("off", "Locale"); render(); return; }
     setSync("wait", "Connessione…");
     render();
@@ -877,6 +878,17 @@ function setSync(st, txt){
 }
 
 /* ---------- dati di esempio ---------- */
+/* pulizia una tantum: gli ordini e i clienti di esempio delle prime versioni
+   restano salvati sul dispositivo, il codice nuovo da solo non li toccherebbe */
+function puliziaEsempi(){
+  if(LS.get("pastaio.puliziaEsempi") === "1") return;
+  const finti = ["Trattoria del Corso", "Gastronomia Sant'Andrea", "Masseria Le Torri"];
+  state.data.attivita = state.data.attivita.filter(a => !finti.includes(a.nome));
+  state.data.ordini = state.data.ordini.filter(o => !finti.includes(o.attivita_nome));
+  LS.set("pastaio.puliziaEsempi", "1");
+  Store.saveLocal();
+}
+
 function seedEsempio(){
   const t = todayISO();
   const A = SEDI[0], S = SEDI[1];
