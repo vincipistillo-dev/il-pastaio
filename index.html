@@ -617,7 +617,7 @@ code{font-family:var(--mono);font-size:12.5px;background:var(--surface-2);paddin
    ============================================================ */
 
 /* ---------- costanti di dominio ---------- */
-const VERSIONE = "2026-09-05 · 6";   // da alzare a ogni pubblicazione
+const VERSIONE = "2026-09-05 · 7";   // da alzare a ogni pubblicazione
 const SEDI = ["Viale Alto Adige","Via Savonarola"];
 const UNITA = ["kg","g","pz","conf","L","vaschette"];
 const TIPI_ATTIVITA = ["Ristorante","Gastronomia","Negozio","Catering","Mensa","Privato"];
@@ -692,7 +692,7 @@ function toast(msg){
 
 /* ---------- stato ---------- */
 const state = {
-  tab: LS.get("pastaio.tab") || "magazzino",
+  tab: "magazzino",
   data: {articoli:[], attivita:[], ordini:[], conferme:[]},
   sede: LS.get("pastaio.sede") || SEDI[0],
   cercaArt: "",
@@ -1427,7 +1427,7 @@ function sheetOrdine(id){
         <button class="btn btn-primary" type="submit">Salva</button>
       </div>
     </form>`);
-  if(!(o.righe || []).length) aggiungiRiga(false);
+  if(!(o.righe || []).length) aggiungiRiga();
 }
 
 function rigaEdit(r){
@@ -1440,13 +1440,10 @@ function rigaEdit(r){
       <button class="step" type="button" data-r-del aria-label="Rimuovi prodotto">×</button>
     </div>`;
 }
-function aggiungiRiga(conFuoco){
+function aggiungiRiga(){
   const box = $("#righe");
   if(!box) return;
   box.insertAdjacentHTML("beforeend", rigaEdit(null));
-  if(!conFuoco) return;
-  const campo = box.lastElementChild.querySelector("[data-r-nome]");
-  if(campo) campo.focus();
 }
 
 /* i ristoranti che hanno ordinato più di recente, per la tendina del nome */
@@ -1522,7 +1519,7 @@ document.addEventListener("click", async e => {
   const hit = sel => t.closest(sel);
 
   const tabBtn = hit("[data-tab]");
-  if(tabBtn){ state.tab = tabBtn.dataset.tab; LS.set("pastaio.tab", state.tab); render(); return; }
+  if(tabBtn){ state.tab = tabBtn.dataset.tab; render(); return; }
 
   if(hit("[data-close]") || t === $("#overlay")){ chiudiSheet(); return; }
 
@@ -1609,7 +1606,7 @@ document.addEventListener("click", async e => {
   const sc = hit("[data-scarica]");
   if(sc){ if(confirm("Sottrarre le quantità di questo ordine dal magazzino?")) await scaricaOrdine(sc.dataset.scarica); return; }
 
-  if(hit("#addRiga")){ aggiungiRiga(true); return; }
+  if(hit("#addRiga")){ aggiungiRiga(); return; }
   const rd = hit("[data-r-del]");
   if(rd){
     const r = rd.closest("[data-riga]");
