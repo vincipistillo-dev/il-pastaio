@@ -2,7 +2,7 @@
 <html lang="it">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="theme-color" content="#147A4B">
 <title>Il Pastaio — Magazzino e Ordini</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -104,6 +104,7 @@
 }
 
 *{box-sizing:border-box}
+[hidden]{display:none!important}
 html,body{margin:0;padding:0}
 body{
   background:var(--ground);
@@ -115,6 +116,9 @@ body{
   -webkit-tap-highlight-color:transparent;
 }
 button,input,select,textarea{font:inherit;color:inherit}
+/* 16px impedisce lo zoom automatico al tocco del campo su iOS */
+input,select,textarea{font-size:16px}
+body{touch-action:manipulation}
 :focus-visible{outline:2px solid var(--grano-bright);outline-offset:2px;border-radius:4px}
 @media (prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;transition-duration:.01ms!important}}
 
@@ -207,12 +211,11 @@ h1,h2,h3{margin:0;text-wrap:balance}
 .field label{font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:var(--ink-3);font-weight:600}
 .field input,.field select,.field textarea{
   background:var(--surface);border:1px solid var(--line-strong);border-radius:var(--radius-sm);
-  padding:9px 10px;font-size:15px;width:100%;
+  padding:9px 10px;font-size:16px;width:100%;
 }
 .field textarea{resize:vertical;min-height:64px}
 .field input:focus,.field select:focus,.field textarea:focus{border-color:var(--grano);outline:none}
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:11px}
-.grid3{display:grid;grid-template-columns:1.4fr .8fr .8fr;gap:8px}
 
 .toolbar{display:flex;gap:8px;align-items:center;margin-bottom:12px;flex-wrap:wrap}
 .search{position:relative;flex:1;min-width:150px}
@@ -439,8 +442,8 @@ h1,h2,h3{margin:0;text-wrap:balance}
   font-size:13px;z-index:80;opacity:0;pointer-events:none;transition:opacity .18s;box-shadow:var(--shadow);
 }
 .toast[data-show="true"]{opacity:1}
-.rowedit{display:grid;grid-template-columns:1fr 68px 62px 32px;gap:6px;align-items:center}
-.rowedit input,.rowedit select{padding:7px 8px;font-size:14px}
+.rowedit{display:grid;grid-template-columns:1fr 56px 74px 30px;gap:5px;align-items:center}
+.rowedit input,.rowedit select{padding:7px 6px;font-size:16px}
 .hint{font-size:12px;color:var(--ink-3);margin-top:-4px}
 code{font-family:var(--mono);font-size:12.5px;background:var(--surface-2);padding:1px 5px;border-radius:4px}
 
@@ -605,7 +608,6 @@ code{font-family:var(--mono);font-size:12.5px;background:var(--surface-2);paddin
 
 /* ---------- costanti di dominio ---------- */
 const SEDI = ["Viale Alto Adige","Via Savonarola"];
-const CATEGORIE = ["Pasta fresca","Farine e semole","Ripieni","Latticini","Verdure","Salumi","Uova","Confezionamento","Altro"];
 const UNITA = ["kg","g","pz","conf","L","vaschette"];
 const TIPI_ATTIVITA = ["Ristorante","Gastronomia","Negozio","Catering","Mensa","Privato"];
 
@@ -872,17 +874,17 @@ function seedEsempio(){
   state.data.attivita = [a1, a2, a3];
   const A = SEDI[0], S = SEDI[1];
   state.data.articoli = [
-    {id:uid(), nome:"Orecchiette fresche", sede:A, categoria:"Pasta fresca", quantita:5, unita:"kg", scorta_minima:8, posizione:"Cella 1", scadenza:addDays(t,3), note:""},
-    {id:uid(), nome:"Cavatelli", sede:A, categoria:"Pasta fresca", quantita:12, unita:"kg", scorta_minima:6, posizione:"Cella 1", scadenza:addDays(t,4), note:""},
-    {id:uid(), nome:"Strascinati", sede:A, categoria:"Pasta fresca", quantita:3.5, unita:"kg", scorta_minima:5, posizione:"Cella 1", scadenza:addDays(t,2), note:""},
-    {id:uid(), nome:"Ravioli ricotta e spinaci", sede:A, categoria:"Ripieni", quantita:40, unita:"vaschette", scorta_minima:20, posizione:"Cella 2", scadenza:addDays(t,5), note:"Vaschette da 500 g"},
-    {id:uid(), nome:"Semola rimacinata di grano duro", sede:A, categoria:"Farine e semole", quantita:125, unita:"kg", scorta_minima:50, posizione:"Scaffale A", scadenza:"", note:"Sacchi da 25 kg"},
-    {id:uid(), nome:"Farina 00", sede:A, categoria:"Farine e semole", quantita:18, unita:"kg", scorta_minima:25, posizione:"Scaffale A", scadenza:"", note:""},
-    {id:uid(), nome:"Uova fresche", sede:A, categoria:"Uova", quantita:180, unita:"pz", scorta_minima:120, posizione:"Cella 2", scadenza:addDays(t,12), note:""},
-    {id:uid(), nome:"Orecchiette fresche", sede:S, categoria:"Pasta fresca", quantita:7, unita:"kg", scorta_minima:5, posizione:"Banco", scadenza:addDays(t,3), note:""},
-    {id:uid(), nome:"Cavatelli", sede:S, categoria:"Pasta fresca", quantita:4, unita:"kg", scorta_minima:5, posizione:"Banco", scadenza:addDays(t,3), note:""},
-    {id:uid(), nome:"Ricotta fresca", sede:S, categoria:"Latticini", quantita:6, unita:"kg", scorta_minima:4, posizione:"Cella", scadenza:addDays(t,2), note:""},
-    {id:uid(), nome:"Vaschette 500 g", sede:S, categoria:"Confezionamento", quantita:220, unita:"pz", scorta_minima:300, posizione:"Retro", scadenza:"", note:"Da riordinare"}
+    {id:uid(), nome:"Orecchiette fresche", sede:A, quantita:5, unita:"kg", scorta_minima:8, posizione:"Cella 1", scadenza:addDays(t,3), note:""},
+    {id:uid(), nome:"Cavatelli", sede:A, quantita:12, unita:"kg", scorta_minima:6, posizione:"Cella 1", scadenza:addDays(t,4), note:""},
+    {id:uid(), nome:"Strascinati", sede:A, quantita:3.5, unita:"kg", scorta_minima:5, posizione:"Cella 1", scadenza:addDays(t,2), note:""},
+    {id:uid(), nome:"Ravioli ricotta e spinaci", sede:A, quantita:40, unita:"vaschette", scorta_minima:20, posizione:"Cella 2", scadenza:addDays(t,5), note:"Vaschette da 500 g"},
+    {id:uid(), nome:"Semola rimacinata di grano duro", sede:A, quantita:125, unita:"kg", scorta_minima:50, posizione:"Scaffale A", scadenza:"", note:"Sacchi da 25 kg"},
+    {id:uid(), nome:"Farina 00", sede:A, quantita:18, unita:"kg", scorta_minima:25, posizione:"Scaffale A", scadenza:"", note:""},
+    {id:uid(), nome:"Uova fresche", sede:A, quantita:180, unita:"pz", scorta_minima:120, posizione:"Cella 2", scadenza:addDays(t,12), note:""},
+    {id:uid(), nome:"Orecchiette fresche", sede:S, quantita:7, unita:"kg", scorta_minima:5, posizione:"Banco", scadenza:addDays(t,3), note:""},
+    {id:uid(), nome:"Cavatelli", sede:S, quantita:4, unita:"kg", scorta_minima:5, posizione:"Banco", scadenza:addDays(t,3), note:""},
+    {id:uid(), nome:"Ricotta fresca", sede:S, quantita:6, unita:"kg", scorta_minima:4, posizione:"Cella", scadenza:addDays(t,2), note:""},
+    {id:uid(), nome:"Vaschette 500 g", sede:S, quantita:220, unita:"pz", scorta_minima:300, posizione:"Retro", scadenza:"", note:"Da riordinare"}
   ];
   const art = state.data.articoli;
   const ref = n => { const a = art.find(x => x.nome === n); return a ? a.id : null; };
@@ -935,7 +937,7 @@ function render(){
   v.innerHTML = avvisi() + corpo;
 
   const fab = $("#fab");
-  const etichette = {magazzino:"Articolo", ordini:"Ordine", attivita:"Attività"};
+  const etichette = {magazzino:"Prodotto", ordini:"Ordine", attivita:"Attività"};
   fab.hidden = !etichette[state.tab];
   if(!fab.hidden) $("#fabTxt").textContent = etichette[state.tab];
 }
@@ -1025,7 +1027,7 @@ async function confermaSituazione(){
 function viewMagazzino(){
   const q = state.cercaArt.trim().toLowerCase();
   let arts = state.data.articoli.filter(a => sedeDi(a) === state.sede);
-  if(q) arts = arts.filter(a => (a.nome + " " + (a.posizione||"") + " " + (a.categoria||"")).toLowerCase().includes(q));
+  if(q) arts = arts.filter(a => a.nome.toLowerCase().includes(q));
   arts.sort((a,b) => (allerta(b) ? 1 : 0) - (allerta(a) ? 1 : 0) || a.nome.localeCompare(b.nome, "it"));
 
   return `
@@ -1041,7 +1043,7 @@ function viewMagazzino(){
     </div>
     ${arts.length
       ? `<div class="list">${arts.map(cardArticolo).join("")}</div>`
-      : vuoto("Nessun articolo", q ? "Nessun risultato per questa ricerca." : `Aggiungi il primo articolo di ${state.sede}.`)}
+      : vuoto("Nessun prodotto", q ? "Nessun risultato per questa ricerca." : `Aggiungi il primo prodotto di ${state.sede}.`)}
     ${bloccoConferma()}
   `;
 }
@@ -1180,7 +1182,7 @@ function allineaStato(o){ o.stato = statoDi(o); }
 /* ---------- attività ---------- */
 function viewAttivita(){
   const corrente = inizioSettimana(todayISO());
-  const settimane = [0,1,2,3,4].map(i => addDays(corrente, -7 * i));   // fino a un mese indietro
+  const settimane = [0,1,2,3].map(i => addDays(corrente, -7 * i));   // fino a un mese indietro
   if(!settimane.includes(state.settimana)) state.settimana = corrente;
   const da = state.settimana, a = addDays(da, 6);
 
@@ -1213,7 +1215,7 @@ function viewAttivita(){
       <h1 class="page-title">Attività</h1>
       <div class="chips">${settimane.map((w, i) => `
         <button class="chip" type="button" data-settimana="${w}" aria-pressed="${state.settimana === w}">
-          ${i === 0 ? "Questa settimana" : esc(arcoSettimana(w))}
+          ${i === 0 ? "Questa settimana" : `${i} settiman${i === 1 ? "a" : "e"} fa`}
         </button>`).join("")}</div>
     </div>
     <div class="dayhead">
@@ -1237,7 +1239,7 @@ function viewAttivita(){
           <div class="u">ordin${r.n === 1 ? "e" : "i"}</div>
         </div>
       </article>`).join("")}</div>`
-      : vuoto("Nessuna attività", "Aggiungi il primo cliente per poterlo scegliere negli ordini.")}
+      : vuoto("Nessuna attività", "Aggiungine uno, oppure registra un ordine a suo nome e comparirà qui.")}
   `;
 }
 
@@ -1336,8 +1338,6 @@ function apriSheet(titolo, html){
     </div>${html}`;
   $("#overlay").dataset.open = "true";
   document.body.style.overflow = "hidden";
-  const first = $("#sheet").querySelector("input:not([type=hidden]),select,textarea");
-  if(first) setTimeout(() => first.focus(), 60);
 }
 function chiudiSheet(){
   $("#overlay").dataset.open = "false";
@@ -1346,22 +1346,27 @@ function chiudiSheet(){
 
 function sheetArticolo(id){
   const a = state.data.articoli.find(x => x.id === id) ||
-    {id:"", nome:"", sede:state.sede, categoria:"Pasta fresca", quantita:"", unita:"kg", scorta_minima:"", posizione:"", scadenza:"", note:""};
-  apriSheet(id ? "Modifica articolo" : "Nuovo articolo", `
+    {id:"", nome:"", sede:state.sede, quantita:"", scadenza:""};
+  apriSheet(id ? "Modifica prodotto" : "Nuovo prodotto", `
     <form id="formArt" data-id="${esc(a.id)}">
-      <div class="field"><label for="fNome">Nome</label><input id="fNome" name="nome" value="${esc(a.nome)}" required placeholder="Orecchiette fresche"></div>
-      <div class="field"><label for="fSede">Punto vendita</label><select id="fSede" name="sede">${SEDI.map(v => `<option ${v === sedeDi(a) ? "selected" : ""}>${v}</option>`).join("")}</select></div>
+      <div class="field">
+        <label for="fNome">Nome</label>
+        <input id="fNome" name="nome" value="${esc(a.nome)}" required placeholder="Orecchiette fresche">
+      </div>
+      <div class="field">
+        <label for="fSede">Punto vendita</label>
+        <select id="fSede" name="sede">${SEDI.map(v => `<option ${v === sedeDi(a) ? "selected" : ""}>${v}</option>`).join("")}</select>
+      </div>
       <div class="grid2">
-        <div class="field"><label for="fCat">Categoria</label><select id="fCat" name="categoria">${CATEGORIE.map(c => `<option ${c === a.categoria ? "selected" : ""}>${c}</option>`).join("")}</select></div>
-        <div class="field"><label for="fPos">Posizione</label><input id="fPos" name="posizione" value="${esc(a.posizione)}" placeholder="Cella 1"></div>
+        <div class="field">
+          <label for="fQta">Quantità</label>
+          <input id="fQta" name="quantita" inputmode="decimal" value="${esc(a.quantita)}" required>
+        </div>
+        <div class="field">
+          <label for="fScad">Scadenza</label>
+          <input id="fScad" name="scadenza" type="date" value="${esc(a.scadenza || "")}">
+        </div>
       </div>
-      <div class="grid3">
-        <div class="field"><label for="fQta">Quantità</label><input id="fQta" name="quantita" inputmode="decimal" value="${esc(a.quantita)}" required></div>
-        <div class="field"><label for="fUni">Unità</label><select id="fUni" name="unita">${UNITA.map(u => `<option ${u === a.unita ? "selected" : ""}>${u}</option>`).join("")}</select></div>
-        <div class="field"><label for="fMin">Min.</label><input id="fMin" name="scorta_minima" inputmode="decimal" value="${esc(a.scorta_minima)}"></div>
-      </div>
-      <div class="field"><label for="fScad">Scadenza</label><input id="fScad" name="scadenza" type="date" value="${esc(a.scadenza)}"></div>
-      <div class="field"><label for="fNote">Note</label><textarea id="fNote" name="note" placeholder="Sacchi da 25 kg, fornitore…">${esc(a.note)}</textarea></div>
       <div class="sheet-foot">
         ${id ? `<button class="btn btn-danger" type="button" data-del-art="${esc(a.id)}">Elimina</button>` : ""}
         <button class="btn btn-primary" type="submit">Salva</button>
@@ -1420,7 +1425,7 @@ function sheetOrdine(id){
         <button class="btn btn-primary" type="submit">Salva</button>
       </div>
     </form>`);
-  if(!(o.righe || []).length) aggiungiRiga();
+  if(!(o.righe || []).length) aggiungiRiga(false);
 }
 
 function rigaEdit(r){
@@ -1433,10 +1438,11 @@ function rigaEdit(r){
       <button class="step" type="button" data-r-del aria-label="Rimuovi prodotto">×</button>
     </div>`;
 }
-function aggiungiRiga(){
+function aggiungiRiga(conFuoco){
   const box = $("#righe");
   if(!box) return;
   box.insertAdjacentHTML("beforeend", rigaEdit(null));
+  if(!conFuoco) return;
   const campo = box.lastElementChild.querySelector("[data-r-nome]");
   if(campo) campo.focus();
 }
@@ -1497,7 +1503,7 @@ async function scaricaOrdine(id){
   for(const r of o.righe || []){
     const a = state.data.articoli.find(x => x.id === r.articolo_id);
     if(!a){ mancanti.push(r.nome); continue; }
-    if(a.unita !== r.unita){ mancanti.push(`${r.nome} (unità diverse: ${r.unita} vs ${a.unita})`); continue; }
+    if(a.unita && r.unita && a.unita !== r.unita){ mancanti.push(`${r.nome} (unità diverse: ${r.unita} e ${a.unita})`); continue; }
     a.quantita = Math.round((num(a.quantita) - num(r.quantita)) * 1000) / 1000;
     await Store.save("articoli", a);
   }
@@ -1590,7 +1596,7 @@ document.addEventListener("click", async e => {
   const eo = hit("[data-edit-ord]"); if(eo){ sheetOrdine(eo.dataset.editOrd); return; }
 
   const da = hit("[data-del-art]");
-  if(da){ if(confirm("Eliminare questo articolo dal magazzino?")){ await Store.remove("articoli", da.dataset.delArt); chiudiSheet(); toast("Articolo eliminato"); } return; }
+  if(da){ if(confirm("Eliminare questo prodotto dal magazzino?")){ await Store.remove("articoli", da.dataset.delArt); chiudiSheet(); toast("Prodotto eliminato"); } return; }
   const dt = hit("[data-del-att]");
   if(dt){ if(confirm("Eliminare questa attività? Gli ordini già registrati restano.")){ await Store.remove("attivita", dt.dataset.delAtt); chiudiSheet(); toast("Attività eliminata"); } return; }
   const dord = hit("[data-del-ord]");
@@ -1599,7 +1605,7 @@ document.addEventListener("click", async e => {
   const sc = hit("[data-scarica]");
   if(sc){ if(confirm("Sottrarre le quantità di questo ordine dal magazzino?")) await scaricaOrdine(sc.dataset.scarica); return; }
 
-  if(hit("#addRiga")){ aggiungiRiga(); return; }
+  if(hit("#addRiga")){ aggiungiRiga(true); return; }
   const rd = hit("[data-r-del]");
   if(rd){
     const r = rd.closest("[data-riga]");
@@ -1689,14 +1695,20 @@ document.addEventListener("submit", async e => {
 
   if(f.id === "formArt"){
     const d = Object.fromEntries(new FormData(f));
+    const vecchio = state.data.articoli.find(x => x.id === f.dataset.id) || {};
     await Store.save("articoli", {
+      categoria: vecchio.categoria || "",
+      unita: vecchio.unita || "",
+      scorta_minima: num(vecchio.scorta_minima),
+      posizione: vecchio.posizione || "",
+      note: vecchio.note || "",
       id: f.dataset.id || uid(),
-      nome: d.nome.trim(), sede: d.sede, categoria: d.categoria,
-      quantita: num(d.quantita), unita: d.unita,
-      scorta_minima: num(d.scorta_minima), posizione: d.posizione.trim(),
-      scadenza: d.scadenza || "", note: d.note.trim()
+      nome: d.nome.trim(),
+      sede: d.sede,
+      quantita: num(d.quantita),
+      scadenza: d.scadenza || ""
     });
-    chiudiSheet(); toast("Articolo salvato"); return;
+    chiudiSheet(); toast("Prodotto salvato"); return;
   }
 
   if(f.id === "formAtt"){
