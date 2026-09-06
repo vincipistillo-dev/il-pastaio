@@ -499,7 +499,12 @@ code{font-family:var(--mono);font-size:12.5px;background:var(--surface-2);paddin
 .gruppo[data-aperto="false"] .gruppo-corpo{display:none}
 
 /* riga articolo: nome, quantità, cestino */
-.item.art{grid-template-columns:1fr auto auto;gap:8px}
+.item.art{grid-template-columns:1fr auto auto;gap:8px;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+.item.trascina{
+  pointer-events:none;position:relative;z-index:3;
+  box-shadow:0 10px 22px -8px rgba(20,42,30,.45);
+  border-color:var(--line-strong);
+}
 .item-main{
   appearance:none;background:none;border:0;padding:0;font:inherit;color:inherit;
   text-align:left;cursor:pointer;min-width:0;
@@ -652,7 +657,7 @@ code{font-family:var(--mono);font-size:12.5px;background:var(--surface-2);paddin
    ============================================================ */
 
 /* ---------- costanti di dominio ---------- */
-const VERSIONE = "2026-09-05 · 9";   // da alzare a ogni pubblicazione
+const VERSIONE = "2026-09-06 · 10";   // da alzare a ogni pubblicazione
 const SEDI = ["Viale Alto Adige","Via Savonarola"];
 const UNITA = ["kg","g","pz","conf","L","vaschette"];
 const TIPI_ATTIVITA = ["Ristorante","Gastronomia","Negozio","Catering","Mensa","Privato"];
@@ -836,6 +841,7 @@ const Store = {
     if(!Store.loadLocal()) seedEsempio();
     puliziaEsempi();
     aggiornaProdottiIniziali();
+    aggiornaGruppi();
     if(!cfg){ Store.mode = "local"; Store.ready = true; setSync("off", "Locale"); render(); return; }
     setSync("wait", "Connessione…");
     render();
@@ -929,10 +935,11 @@ function puliziaEsempi(){
 
 /* le orecchiette stanno insieme: il gruppo si ricava dal nome,
    così una varietà nuova ci finisce dentro da sola */
-const GRUPPI = ["Orecchiette"];
+const GRUPPI_DA_NOME = ["Orecchiette"];
 function gruppoDi(a){
+  if(a.gruppo) return a.gruppo;                 // gruppo assegnato esplicitamente
   const n = String(a.nome || "");
-  return GRUPPI.find(g => n.toLowerCase().startsWith(g.toLowerCase())) || "";
+  return GRUPPI_DA_NOME.find(g => n.toLowerCase().startsWith(g.toLowerCase())) || "";
 }
 function etichettaArticolo(a, intero){
   const g = gruppoDi(a);
@@ -946,21 +953,23 @@ const ORECCHIETTE = ["Orecchiette piccole","Orecchiette medie","Orecchiette sena
 const ALTO_ADIGE = ["Strascinati","Strascinati neri","Vermicelli","Cavatelli","Cavatelli rigati",
   "Capunti","Strozzapreti","Troffiette","Spaghettoni","Paccheri","Calamarata","Sciallatelli",
   "Gnocchetti","Gnocchetti verdi","Chicche","Tortellini piccoli","Tortellini medi","Raviolini","Pistacchio"];
-const SAVONAROLA = ["Carne","Ricotta e spinaci","Prosciutto e mozzarella","Speck e mortadella",
+const AGNOLOTTI = ["Carne","Ricotta e spinaci","Prosciutto e mozzarella","Speck e mortadella",
   "Burrata","Sorrentina","Murgiana","Pistacchio","Limone","Cacio e pepe","Carciofi","Melanzana",
-  "Tortellini grandi","Tortellini piccoli","Raviolini","Fusilloni","Avellinesi","Rigatoni",
-  "Caserecce","Garganelle","Tubettoni","Pastina vegetale","Crostacei","P.M. No lattosio"];
+  "Crostacei","P.M. No lattosio"];
+const SAVONAROLA = ["Tortellini grandi","Tortellini piccoli","Raviolini","Fusilloni","Avellinesi",
+  "Rigatoni","Caserecce","Garganelle","Tubettoni","Pastina vegetale"];
 
 function prodottiIniziali(){
-  const crea = (nomi, sede, da) => nomi.map((nome, i) => ({
-    id: uid(), nome, sede, quantita: 0, unita: "", scorta_minima: 0,
+  const crea = (nomi, sede, da, gruppo) => nomi.map((nome, i) => ({
+    id: uid(), nome, sede, gruppo: gruppo || "", quantita: 0, unita: "", scorta_minima: 0,
     posizione: "", scadenza: "", note: "", ordine: da + i
   }));
   return [
     ...crea(ORECCHIETTE, SEDI[0], 0),
-    ...crea(ALTO_ADIGE,  SEDI[0], 100),
+    ...crea(ALTO_ADIGE,  SEDI[0], 200),
     ...crea(ORECCHIETTE, SEDI[1], 0),
-    ...crea(SAVONAROLA,  SEDI[1], 100)
+    ...crea(AGNOLOTTI,   SEDI[1], 100, "Agnolotti"),
+    ...crea(SAVONAROLA,  SEDI[1], 200)
   ];
 }
 
@@ -973,6 +982,17 @@ function seedEsempio(){
 
 /* sui dispositivi che avevano il vecchio elenco finto lo sostituiamo una volta,
    ma solo se non è stato toccato: se hai aggiunto roba tua non tocco niente */
+/* assegna il gruppo Agnolotti ai prodotti già presenti, senza toccarne le quantità */
+function aggiornaGruppi(){
+  if(LS.get("pastaio.gruppiAgnolotti") === "1") return;
+  let cambiati = false;
+  for(const a of state.data.articoli){
+    if(sedeDi(a) === SEDI[1] && !a.gruppo && AGNOLOTTI.includes(a.nome)){ a.gruppo = "Agnolotti"; cambiati = true; }
+  }
+  if(cambiati) Store.saveLocal();
+  LS.set("pastaio.gruppiAgnolotti", "1");
+}
+
 function aggiornaProdottiIniziali(){
   if(LS.get("pastaio.prodottiVeri") === "1") return;
   const vecchi = ["Orecchiette fresche","Cavatelli","Strascinati","Ravioli ricotta e spinaci",
@@ -1014,7 +1034,7 @@ function render(){
   v.innerHTML = avvisi() + corpo;
 
   const fab = $("#fab");
-  const etichette = {magazzino:"Prodotto", ordini:"Ordine", attivita:"Attività"};
+  const etichette = {magazzino:"Prodotto", ordini:"Ordine"};
   fab.hidden = !etichette[state.tab];
   if(!fab.hidden) $("#fabTxt").textContent = etichette[state.tab];
 }
@@ -1163,7 +1183,7 @@ function sezioneGruppo(nome, lista){
 
 function cardArticolo(a, nomeIntero){
   return `
-    <article class="item art" data-alert="${allerta(a)}">
+    <article class="item art" data-alert="${allerta(a)}" data-id="${esc(a.id)}">
       <button class="item-main" type="button" data-edit-art="${a.id}">
         <span class="item-name">${esc(etichettaArticolo(a, nomeIntero))}</span>
       </button>
@@ -1355,7 +1375,7 @@ function viewAttivita(){
           <div class="u">ordin${r.n === 1 ? "e" : "i"}</div>
         </div>
       </article>`).join("")}</div>`
-      : vuoto("Nessuna attività", "Aggiungine uno, oppure registra un ordine a suo nome e comparirà qui.")}
+      : vuoto("Nessuna attività", "I ristoranti compaiono qui appena registri un ordine a loro nome.")}
   `;
 }
 
@@ -1621,9 +1641,88 @@ async function scaricaOrdine(id){
 }
 
 /* ============================================================
+   RIORDINO DEI PRODOTTI
+   Nessun appiglio a schermo: si tiene premuto su una riga e la si
+   trascina. Il tocco breve resta il tocco di sempre.
+   ============================================================ */
+const trascina = {timer:null, el:null, attivo:false, x:0, y:0, id:null};
+let ignoraProssimoClic = false;
+
+function fermaTrascinamento(){
+  clearTimeout(trascina.timer);
+  trascina.timer = null;
+  if(trascina.el) trascina.el.classList.remove("trascina");
+  const eraAttivo = trascina.attivo;
+  trascina.el = null;
+  trascina.attivo = false;
+  return eraAttivo;
+}
+
+/* rilegge l'ordine dal DOM e lo scrive sui prodotti */
+async function salvaOrdineDaSchermo(){
+  const righe = [...document.querySelectorAll("#view .item.art[data-id]")];
+  const cambiati = [];
+  righe.forEach((el, i) => {
+    const a = state.data.articoli.find(x => x.id === el.dataset.id);
+    if(a && a.ordine !== i){ a.ordine = i; a.updated_at = new Date().toISOString(); cambiati.push(a); }
+  });
+  if(!cambiati.length){ render(); return; }
+  if(Store.mode !== "sync"){ Store.saveLocal(); render(); return; }
+  render();
+  for(const a of cambiati){
+    const {error} = await Store.sb.from("articoli").upsert(toRow("articoli", a));
+    if(error){ toast("Ordine non salvato: " + error.message); break; }
+  }
+}
+
+document.addEventListener("pointerdown", e => {
+  if(state.tab !== "magazzino" || $("#overlay").dataset.open === "true") return;
+  const riga = e.target.closest(".item.art");
+  if(!riga || e.target.closest(".step, .del")) return;
+  trascina.el = riga;
+  trascina.id = e.pointerId;
+  trascina.x = e.clientX;
+  trascina.y = e.clientY;
+  trascina.timer = setTimeout(() => {
+    trascina.attivo = true;
+    riga.classList.add("trascina");
+    try { riga.releasePointerCapture(trascina.id); } catch {}
+    if(navigator.vibrate) navigator.vibrate(12);
+  }, 420);
+});
+
+document.addEventListener("pointermove", e => {
+  if(!trascina.el) return;
+  if(!trascina.attivo){
+    /* se il dito si muove prima che scatti la pressione lunga, sta scorrendo */
+    if(Math.abs(e.clientX - trascina.x) > 9 || Math.abs(e.clientY - trascina.y) > 9) fermaTrascinamento();
+    return;
+  }
+  const sotto = document.elementFromPoint(e.clientX, e.clientY);
+  const bersaglio = sotto && sotto.closest(".item.art");
+  if(!bersaglio || bersaglio === trascina.el) return;
+  if(bersaglio.parentElement !== trascina.el.parentElement) return;   // si resta nel proprio elenco
+  const r = bersaglio.getBoundingClientRect();
+  if(e.clientY < r.top + r.height / 2) bersaglio.before(trascina.el);
+  else bersaglio.after(trascina.el);
+});
+
+document.addEventListener("pointerup", async () => {
+  if(!fermaTrascinamento()) return;
+  ignoraProssimoClic = true;                       // il rilascio non deve aprire la scheda
+  setTimeout(() => { ignoraProssimoClic = false; }, 400);
+  await salvaOrdineDaSchermo();
+});
+document.addEventListener("pointercancel", fermaTrascinamento);
+
+/* mentre si trascina la pagina non deve scorrere sotto il dito */
+document.addEventListener("touchmove", e => { if(trascina.attivo) e.preventDefault(); }, {passive:false});
+
+/* ============================================================
    EVENTI
    ============================================================ */
 document.addEventListener("click", async e => {
+  if(ignoraProssimoClic){ ignoraProssimoClic = false; return; }
   const t = e.target;
   const hit = sel => t.closest(sel);
 
