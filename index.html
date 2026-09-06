@@ -136,6 +136,28 @@ body{touch-action:manipulation}
 .brand .marchio-stemma{flex:none;width:40px;height:27px;color:var(--head-ink)}
 /* overflow:hidden ritaglia al viewBox: nella barra si vede il solo stemma */
 .marchio-completo,.marchio-stemma{display:block;overflow:hidden}
+.brand-txt{min-width:0}
+.brand-name{
+  font-family:var(--display);font-weight:600;
+  font-size:18px;line-height:1;letter-spacing:.07em;white-space:nowrap;
+}
+.brand-sub{
+  font-size:8.5px;letter-spacing:.2em;text-transform:uppercase;
+  color:var(--head-ink-2);white-space:nowrap;margin-top:3px;
+}
+.topbar-right{margin-left:auto;display:flex;align-items:center;gap:8px}
+.syncpill{
+  display:inline-flex;align-items:center;gap:6px;
+  font-size:11px;letter-spacing:.04em;
+  background:rgba(255,255,255,.09);color:var(--head-ink-2);
+  border:1px solid rgba(255,255,255,.12);
+  padding:4px 9px;border-radius:999px;cursor:pointer;white-space:nowrap;
+}
+.syncpill .dot{width:6px;height:6px;border-radius:50%;background:var(--head-ink-2);flex:none}
+.syncpill[data-state="on"]{color:#CFE6CE}
+.syncpill[data-state="on"] .dot{background:#7FD08A}
+.syncpill[data-state="err"]{color:#F0B9AE}
+.syncpill[data-state="err"] .dot{background:#E27A68}
 
 main{flex:1;padding:14px 14px calc(84px + env(safe-area-inset-bottom));width:100%;max-width:1120px;margin:0 auto}
 
@@ -610,7 +632,7 @@ code{font-family:var(--mono);font-size:12.5px;background:var(--surface-2);paddin
    ============================================================ */
 
 /* ---------- costanti di dominio ---------- */
-const VERSIONE = "2026-09-06 · 15";   // da alzare a ogni pubblicazione
+const VERSIONE = "2026-09-06 · 16";   // da alzare a ogni pubblicazione
 const SEDI = ["Viale Alto Adige","Via Savonarola"];
 const UNITA = ["kg","g","pz","conf","L","vaschette"];
 const TIPI_ATTIVITA = ["Ristorante","Gastronomia","Negozio","Catering","Mensa","Privato"];
