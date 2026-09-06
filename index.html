@@ -657,7 +657,7 @@ code{font-family:var(--mono);font-size:12.5px;background:var(--surface-2);paddin
    ============================================================ */
 
 /* ---------- costanti di dominio ---------- */
-const VERSIONE = "2026-09-06 · 10";   // da alzare a ogni pubblicazione
+const VERSIONE = "2026-09-06 · 11";   // da alzare a ogni pubblicazione
 const SEDI = ["Viale Alto Adige","Via Savonarola"];
 const UNITA = ["kg","g","pz","conf","L","vaschette"];
 const TIPI_ATTIVITA = ["Ristorante","Gastronomia","Negozio","Catering","Mensa","Privato"];
@@ -944,6 +944,9 @@ function gruppoDi(a){
 function etichettaArticolo(a, intero){
   const g = gruppoDi(a);
   if(intero || !g) return a.nome;
+  /* si accorcia solo quando il nome ripete il gruppo: "Orecchiette nere" -> "Nere".
+     Un agnolotto si chiama "Ricotta e spinaci" e resta intero. */
+  if(!a.nome.toLowerCase().startsWith(g.toLowerCase())) return a.nome;
   const resto = a.nome.slice(g.length).trim();
   return resto ? resto.charAt(0).toUpperCase() + resto.slice(1) : a.nome;
 }
