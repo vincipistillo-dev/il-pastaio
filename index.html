@@ -134,7 +134,8 @@ body{touch-action:manipulation}
 }
 .brand{display:flex;align-items:center;gap:10px;min-width:0}
 .brand .marchio-stemma{flex:none;width:40px;height:27px;color:var(--head-ink)}
-.marchio-completo,.marchio-stemma{display:block;overflow:visible}
+/* overflow:hidden ritaglia al viewBox: nella barra si vede il solo stemma */
+.marchio-completo,.marchio-stemma{display:block;overflow:hidden}
 
 main{flex:1;padding:14px 14px calc(84px + env(safe-area-inset-bottom));width:100%;max-width:1120px;margin:0 auto}
 
@@ -609,7 +610,7 @@ code{font-family:var(--mono);font-size:12.5px;background:var(--surface-2);paddin
    ============================================================ */
 
 /* ---------- costanti di dominio ---------- */
-const VERSIONE = "2026-09-06 · 14";   // da alzare a ogni pubblicazione
+const VERSIONE = "2026-09-06 · 15";   // da alzare a ogni pubblicazione
 const SEDI = ["Viale Alto Adige","Via Savonarola"];
 const UNITA = ["kg","g","pz","conf","L","vaschette"];
 const TIPI_ATTIVITA = ["Ristorante","Gastronomia","Negozio","Catering","Mensa","Privato"];
