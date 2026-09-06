@@ -501,8 +501,8 @@ code{font-family:var(--mono);font-size:12.5px;background:var(--surface-2);paddin
 /* riga articolo: nome, quantità, cestino */
 .item.art{grid-template-columns:1fr auto auto;gap:8px;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
 .item.trascina{
-  pointer-events:none;position:relative;z-index:3;
-  box-shadow:0 10px 22px -8px rgba(20,42,30,.45);
+  pointer-events:none;position:relative;z-index:3;will-change:transform;
+  box-shadow:0 12px 26px -8px rgba(20,42,30,.5);
   border-color:var(--line-strong);
 }
 .item-main{
@@ -657,7 +657,7 @@ code{font-family:var(--mono);font-size:12.5px;background:var(--surface-2);paddin
    ============================================================ */
 
 /* ---------- costanti di dominio ---------- */
-const VERSIONE = "2026-09-06 · 11";   // da alzare a ogni pubblicazione
+const VERSIONE = "2026-09-06 · 12";   // da alzare a ogni pubblicazione
 const SEDI = ["Viale Alto Adige","Via Savonarola"];
 const UNITA = ["kg","g","pz","conf","L","vaschette"];
 const TIPI_ATTIVITA = ["Ristorante","Gastronomia","Negozio","Catering","Mensa","Privato"];
@@ -1648,20 +1648,51 @@ async function scaricaOrdine(id){
    Nessun appiglio a schermo: si tiene premuto su una riga e la si
    trascina. Il tocco breve resta il tocco di sempre.
    ============================================================ */
-const trascina = {timer:null, el:null, attivo:false, x:0, y:0, id:null};
+const trascina = {timer:null, el:null, attivo:false, x:0, y:0, id:null, scarto:0, dy:0};
 let ignoraProssimoClic = false;
 
-function fermaTrascinamento(){
+/* tiene la riga incollata al dito: misura dove sta davvero e corregge lo
+   scostamento, così resta sotto il dito anche dopo che ha cambiato posto */
+function seguiIlDito(y){
+  const r = trascina.el.getBoundingClientRect();
+  trascina.dy += (y - trascina.scarto) - r.top;
+  trascina.el.style.transform = `translateY(${trascina.dy}px)`;
+}
+
+/* la riga scavalcata scivola al suo nuovo posto invece di saltarci */
+function scivola(el, daTop){
+  const d = daTop - el.getBoundingClientRect().top;
+  if(!d) return;
+  el.style.transition = "none";
+  el.style.transform = `translateY(${d}px)`;
+  requestAnimationFrame(() => {
+    el.style.transition = "transform .16s ease";
+    el.style.transform = "";
+  });
+}
+
+function fermaTrascinamento(posa){
   clearTimeout(trascina.timer);
   trascina.timer = null;
-  if(trascina.el) trascina.el.classList.remove("trascina");
+  const el = trascina.el;
   const eraAttivo = trascina.attivo;
   trascina.el = null;
   trascina.attivo = false;
-  return eraAttivo;
+  if(!el) return eraAttivo;
+  if(!eraAttivo){ el.classList.remove("trascina"); return false; }
+  if(posa){
+    /* si posa dove l'hai lasciata, senza scatti */
+    el.style.transition = "transform .18s ease";
+    el.style.transform = "";
+    setTimeout(() => { el.style.transition = ""; el.style.transform = ""; el.classList.remove("trascina"); }, 190);
+  } else {
+    el.style.transition = ""; el.style.transform = ""; el.classList.remove("trascina");
+  }
+  return true;
 }
 
-/* rilegge l'ordine dal DOM e lo scrive sui prodotti */
+/* rilegge l'ordine dal DOM e lo scrive sui prodotti (senza ridisegnare:
+   a schermo sono già al posto giusto) */
 async function salvaOrdineDaSchermo(){
   const righe = [...document.querySelectorAll("#view .item.art[data-id]")];
   const cambiati = [];
@@ -1669,9 +1700,8 @@ async function salvaOrdineDaSchermo(){
     const a = state.data.articoli.find(x => x.id === el.dataset.id);
     if(a && a.ordine !== i){ a.ordine = i; a.updated_at = new Date().toISOString(); cambiati.push(a); }
   });
-  if(!cambiati.length){ render(); return; }
-  if(Store.mode !== "sync"){ Store.saveLocal(); render(); return; }
-  render();
+  if(!cambiati.length) return;
+  if(Store.mode !== "sync"){ Store.saveLocal(); return; }
   for(const a of cambiati){
     const {error} = await Store.sb.from("articoli").upsert(toRow("articoli", a));
     if(error){ toast("Ordine non salvato: " + error.message); break; }
@@ -1688,6 +1718,8 @@ document.addEventListener("pointerdown", e => {
   trascina.y = e.clientY;
   trascina.timer = setTimeout(() => {
     trascina.attivo = true;
+    trascina.dy = 0;
+    trascina.scarto = trascina.y - riga.getBoundingClientRect().top;   // punto in cui hai premuto
     riga.classList.add("trascina");
     try { riga.releasePointerCapture(trascina.id); } catch {}
     if(navigator.vibrate) navigator.vibrate(12);
@@ -1698,25 +1730,32 @@ document.addEventListener("pointermove", e => {
   if(!trascina.el) return;
   if(!trascina.attivo){
     /* se il dito si muove prima che scatti la pressione lunga, sta scorrendo */
-    if(Math.abs(e.clientX - trascina.x) > 9 || Math.abs(e.clientY - trascina.y) > 9) fermaTrascinamento();
+    if(Math.abs(e.clientX - trascina.x) > 9 || Math.abs(e.clientY - trascina.y) > 9) fermaTrascinamento(false);
+    else trascina.y = e.clientY;
     return;
   }
+  seguiIlDito(e.clientY);
+
   const sotto = document.elementFromPoint(e.clientX, e.clientY);
   const bersaglio = sotto && sotto.closest(".item.art");
   if(!bersaglio || bersaglio === trascina.el) return;
   if(bersaglio.parentElement !== trascina.el.parentElement) return;   // si resta nel proprio elenco
+
   const r = bersaglio.getBoundingClientRect();
+  const primaDelloScambio = r.top;
   if(e.clientY < r.top + r.height / 2) bersaglio.before(trascina.el);
   else bersaglio.after(trascina.el);
+  scivola(bersaglio, primaDelloScambio);
+  seguiIlDito(e.clientY);          // il posto è cambiato: si riaggancia al dito
 });
 
 document.addEventListener("pointerup", async () => {
-  if(!fermaTrascinamento()) return;
+  if(!fermaTrascinamento(true)) return;
   ignoraProssimoClic = true;                       // il rilascio non deve aprire la scheda
   setTimeout(() => { ignoraProssimoClic = false; }, 400);
   await salvaOrdineDaSchermo();
 });
-document.addEventListener("pointercancel", fermaTrascinamento);
+document.addEventListener("pointercancel", () => fermaTrascinamento(false));
 
 /* mentre si trascina la pagina non deve scorrere sotto il dito */
 document.addEventListener("touchmove", e => { if(trascina.attivo) e.preventDefault(); }, {passive:false});
