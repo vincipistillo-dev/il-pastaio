@@ -17,17 +17,22 @@ sul dispositivo su cui la apri finché non colleghi la sincronizzazione.
 
 GitHub Pages ospita l'app, non i dati. Per quelli serve il passo successivo.
 
-## Far vedere gli stessi dati a più telefoni
+## Il server
 
-1. Crea un progetto gratuito su [supabase.com](https://supabase.com).
-2. **SQL Editor** → incolla tutto il contenuto di `supabase/schema.sql` → Run.
-3. **Authentication → Users → Add user**: crea un account (email e password) per ogni persona.
-4. **Project Settings → API**: copia *Project URL* e *anon public key*.
-5. Nell'app: **Impostazioni → Collega Supabase**, incolla i due valori, accedi.
+I dati stanno su Supabase (progetto `fnhlxobkejznlyqqoyzn`, regione Irlanda), con quattro
+tabelle: `articoli`, `attivita`, `ordini`, `conferme`. La struttura è in `supabase/schema.sql`.
 
-Da quel momento ogni modifica compare sugli altri dispositivi in pochi secondi.
-La chiave *anon* è pensata per stare dentro l'app: da sola non apre niente, perché le
-tabelle sono protette e richiedono l'accesso con account.
+Indirizzo e chiave pubblica sono scritti dentro `index.html`, nella costante `SERVER`: sui
+dispositivi non c'è niente da configurare, si apre l'app e si accede. La chiave *anon* è fatta
+per stare nel codice — da sola non apre niente, perché:
+
+- ogni tabella ha la protezione a livello di riga e concede lettura e scrittura solo a chi ha
+  effettuato l'accesso;
+- **le iscrizioni libere sono disattivate**, quindi nessuno può crearsi un account da solo.
+
+Quel secondo punto è essenziale: senza, chiunque trovasse la chiave potrebbe registrarsi e
+leggere tutto. Gli account si creano a mano dal pannello Supabase, in Authentication → Users,
+spuntando *Auto Confirm User*.
 
 ## Cosa c'è dentro
 

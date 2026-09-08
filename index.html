@@ -151,7 +151,7 @@ body{touch-action:manipulation}
   font-size:11px;letter-spacing:.04em;
   background:rgba(255,255,255,.09);color:var(--head-ink-2);
   border:1px solid rgba(255,255,255,.12);
-  padding:4px 9px;border-radius:999px;cursor:pointer;white-space:nowrap;
+  padding:4px 9px;border-radius:999px;white-space:nowrap;
 }
 .syncpill .dot{width:6px;height:6px;border-radius:50%;background:var(--head-ink-2);flex:none}
 .syncpill[data-state="on"]{color:#CFE6CE}
@@ -602,9 +602,9 @@ code{font-family:var(--mono);font-size:12.5px;background:var(--surface-2);paddin
     </div>
     <nav class="tabbar" id="tabbar" aria-label="Sezioni"></nav>
     <div class="topbar-right">
-      <button class="syncpill" id="syncpill" data-state="off" type="button">
+      <span class="syncpill" id="syncpill" data-state="off" role="status">
         <span class="dot"></span><span id="syncTxt">Locale</span>
-      </button>
+      </span>
     </div>
   </header>
   <main id="view"></main>
@@ -632,7 +632,7 @@ code{font-family:var(--mono);font-size:12.5px;background:var(--surface-2);paddin
    ============================================================ */
 
 /* ---------- costanti di dominio ---------- */
-const VERSIONE = "2026-09-06 · 16";   // da alzare a ogni pubblicazione
+const VERSIONE = "2026-09-08 · 17";   // da alzare a ogni pubblicazione
 const SEDI = ["Viale Alto Adige","Via Savonarola"];
 const UNITA = ["kg","g","pz","conf","L","vaschette"];
 const TIPI_ATTIVITA = ["Ristorante","Gastronomia","Negozio","Catering","Mensa","Privato"];
@@ -765,7 +765,13 @@ function statoDi(o){ return completo(o) ? "Completato" : "Da preparare"; }
 /* ============================================================
    ARCHIVIO DATI — due modalità dietro la stessa interfaccia
    ============================================================ */
-const CFG_KEY = "pastaio.sync";
+/* Il server del pastificio. La chiave "anon" e fatta per stare dentro le app:
+   da sola non apre niente, perche le tabelle pretendono un accesso valido e le
+   iscrizioni libere sono disattivate. */
+const SERVER = {
+  url: "https://fnhlxobkejznlyqqoyzn.supabase.co",
+  key: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZuaGx4b2JrZWp6bmx5cXFveXpuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg4NjE4NjUsImV4cCI6MjEwNDQzNzg2NX0.lBhMC0PkNRD4yQecJkaNuf3yZBkaYfleBiW9SPspGoA"
+};
 const DATA_KEY = "pastaio.dati.v1";
 const TABELLE = ["articoli","attivita","ordini","conferme"];
 const TABELLE_FACOLTATIVE = ["conferme"];
@@ -774,9 +780,6 @@ const Store = {
   mode: "local",
   sb: null,
   ready: false,
-
-  getConfig(){ try { return JSON.parse(LS.get(CFG_KEY) || "null"); } catch { return null; } },
-  setConfig(c){ c ? LS.set(CFG_KEY, JSON.stringify(c)) : LS.del(CFG_KEY); },
 
   /* --- locale --- */
   loadLocal(){
@@ -812,17 +815,15 @@ const Store = {
 
   /* --- avvio --- */
   async init(){
-    const cfg = Store.getConfig();
     if(!Store.loadLocal()) seedEsempio();
     puliziaEsempi();
     aggiornaProdottiIniziali();
     aggiornaGruppi();
-    if(!cfg){ Store.mode = "local"; Store.ready = true; setSync("off", "Locale"); render(); return; }
     setSync("wait", "Connessione…");
     render();
     try {
       await loadScript("https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js");
-      Store.sb = window.supabase.createClient(cfg.url, cfg.key);
+      Store.sb = window.supabase.createClient(SERVER.url, SERVER.key);
       const {data:{session}} = await Store.sb.auth.getSession();
       if(!session){ Store.mode = "login"; Store.ready = true; setSync("err", "Accedi"); render(); return; }
       await Store.hydrate();
@@ -1359,22 +1360,17 @@ function viewAttivita(){
 
 /* ---------- impostazioni ---------- */
 function viewImpostazioni(){
-  const cfg = Store.getConfig();
   const {articoli, attivita, ordini} = state.data;
   return `
     <h1 class="page-title">Impostazioni</h1>
     <p class="page-sub">Sincronizzazione, backup e manutenzione dei dati</p>
 
     <div class="card">
-      <h3>Sincronizzazione fra dispositivi</h3>
-      <p>${cfg
-        ? "Configurata. Ogni modifica compare sugli altri telefoni in pochi secondi."
-        : "Al momento i dati restano solo su questo dispositivo. Collega un progetto Supabase gratuito perché i telefoni vedano lo stesso magazzino."}</p>
-      <div style="display:flex;gap:8px;flex-wrap:wrap">
-        <button class="btn btn-primary" type="button" id="cfgSync">${cfg ? "Modifica connessione" : "Collega Supabase"}</button>
-        ${cfg ? `<button class="btn btn-danger" type="button" id="cfgReset">Scollega</button>` : ""}
-        ${Store.mode === "sync" ? `<button class="btn" type="button" id="logout">Esci dall'account</button>` : ""}
-      </div>
+      <h3>Sincronizzazione</h3>
+      <p>${Store.mode === "sync"
+        ? "Attiva. Ogni modifica compare sugli altri dispositivi in pochi secondi."
+        : "Non attiva: le modifiche restano su questo dispositivo e non vengono condivise. Controlla la connessione e riapri l'app."}</p>
+      ${Store.mode === "sync" ? `<button class="btn" type="button" id="logout">Esci dall'account</button>` : ""}
     </div>
 
     <div class="card">
@@ -1428,12 +1424,7 @@ function viewLogin(){
         <div class="field"><label for="lgPwd">Password</label><input id="lgPwd" type="password" autocomplete="current-password" required></div>
         <button class="btn btn-primary" type="submit" style="justify-content:center">Entra</button>
       </form>
-      <p class="hint" style="margin-top:12px">Gli account si creano dal pannello Supabase, in Authentication → Users.</p>
-    </div>
-    <div class="card">
-      <h3>Problemi di connessione?</h3>
-      <p>Puoi lavorare offline su questo dispositivo e ricollegarti più tardi.</p>
-      <button class="btn" type="button" id="offline">Continua in locale</button>
+      <p class="hint" style="margin-top:12px">Usa l'account del tuo punto vendita. Se non ricordi le credenziali, chiedi a chi gestisce il pastificio.</p>
     </div>
   `;
 }
@@ -1877,15 +1868,7 @@ document.addEventListener("click", async e => {
   }
   if(hit("#importBtn")){ $("#importFile").click(); return; }
 
-  if(hit("#syncpill") || hit("#cfgSync")){ sheetSync(); return; }
-  if(hit("#cfgReset")){
-    if(confirm("Scollegare la sincronizzazione? I dati restano sul server, questo dispositivo torna in locale.")){
-      Store.setConfig(null); location.reload();
-    }
-    return;
-  }
   if(hit("#logout")){ await Store.sb.auth.signOut(); location.reload(); return; }
-  if(hit("#offline")){ Store.mode = "local"; Store.loadLocal(); setSync("off", "Locale"); render(); return; }
 });
 
 document.addEventListener("keydown", e => {
@@ -1981,16 +1964,6 @@ document.addEventListener("submit", async e => {
     chiudiSheet(); toast("Ordine salvato"); return;
   }
 
-  if(f.id === "formSync"){
-    const d = Object.fromEntries(new FormData(f));
-    const url = d.url.trim().replace(/\/+$/, "");
-    if(!/^https:\/\/.+\.supabase\.co$/.test(url)){ toast("URL non valido (https://xxx.supabase.co)"); return; }
-    Store.setConfig({url, key: d.key.trim()});
-    toast("Connessione salvata, riavvio…");
-    setTimeout(() => location.reload(), 700);
-    return;
-  }
-
   if(f.id === "loginForm"){
     const {error} = await Store.sb.auth.signInWithPassword({email: $("#lgEmail").value, password: $("#lgPwd").value});
     if(error){ toast("Accesso rifiutato: " + error.message); return; }
@@ -1998,17 +1971,6 @@ document.addEventListener("submit", async e => {
   }
 });
 
-function sheetSync(){
-  const cfg = Store.getConfig() || {url:"", key:""};
-  apriSheet("Sincronizzazione", `
-    <form id="formSync">
-      <p class="hint" style="margin:0 0 4px">Crea un progetto gratuito su supabase.com, poi copia qui i due valori che trovi in <code>Project Settings → API</code>.</p>
-      <div class="field"><label for="sUrl">Project URL</label><input id="sUrl" name="url" value="${esc(cfg.url)}" placeholder="https://abcdefgh.supabase.co" required></div>
-      <div class="field"><label for="sKey">Anon public key</label><input id="sKey" name="key" value="${esc(cfg.key)}" placeholder="eyJhbGciOi…" required></div>
-      <p class="hint">Le tabelle si creano una sola volta incollando il file <code>supabase/schema.sql</code> nell'SQL Editor del progetto.</p>
-      <div class="sheet-foot"><button class="btn btn-primary" type="submit">Collega</button></div>
-    </form>`);
-}
 
 /* ---------- avvio ---------- */
 const avvio = performance.now();
