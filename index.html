@@ -522,6 +522,46 @@ code{font-family:var(--mono);font-size:12.5px;background:var(--surface-2);paddin
 .del svg{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 .del:hover{color:var(--crit);border-color:var(--crit)}
 
+/* ---------- schermata di accesso ----------
+   Schermo verde pastificio, riquadro bianco al centro. Colori fissi e non
+   presi dai token: e una superficie di marca, deve restare identica nei due temi. */
+body[data-accesso="true"]{background:#147A4B}
+body[data-accesso="true"] .topbar,
+body[data-accesso="true"] .tabbar,
+body[data-accesso="true"] .fab{display:none!important}
+body[data-accesso="true"] main{
+  margin:0;max-width:none;min-height:100dvh;
+  padding:28px 20px calc(28px + env(safe-area-inset-bottom));
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:26px;
+}
+.accesso-marchio{display:block;width:min(230px,58vw);height:auto;color:#fff;flex:none}
+.accesso{
+  background:#fff;border-radius:20px;padding:24px 20px;
+  width:100%;max-width:350px;color:#147A4B;
+  box-shadow:0 20px 44px -20px rgba(0,0,0,.5);
+}
+.accesso h1{
+  font-family:var(--display);font-size:26px;font-weight:600;
+  color:#147A4B;text-align:center;letter-spacing:.01em;
+}
+.accesso-intro{
+  margin:5px 0 18px;text-align:center;font-size:13px;color:#4C7A63;
+}
+.accesso form{display:flex;flex-direction:column;gap:13px}
+.accesso .field label{color:#3F7059;font-weight:600}
+.accesso .field input{
+  background:#fff;border:1.5px solid #CBDFD4;border-radius:10px;
+  color:#14261C;padding:11px 12px;
+}
+.accesso .field input:focus{border-color:#147A4B;outline:none}
+.btn-accesso{
+  appearance:none;border:0;border-radius:10px;cursor:pointer;
+  background:#147A4B;color:#fff;font-size:16px;font-weight:600;
+  padding:13px;margin-top:3px;width:100%;
+}
+.btn-accesso:active{transform:translateY(1px)}
+.accesso-nota{margin:16px 0 0;text-align:center;font-size:12px;color:#6E9482}
+
 /* ---------- schermata di apertura ---------- */
 .splash{
   position:fixed;inset:0;z-index:100;background:var(--ground);color:var(--murgia);
@@ -632,7 +672,7 @@ code{font-family:var(--mono);font-size:12.5px;background:var(--surface-2);paddin
    ============================================================ */
 
 /* ---------- costanti di dominio ---------- */
-const VERSIONE = "2026-09-08 · 17";   // da alzare a ogni pubblicazione
+const VERSIONE = "2026-09-08 · 18";   // da alzare a ogni pubblicazione
 const SEDI = ["Viale Alto Adige","Via Savonarola"];
 const UNITA = ["kg","g","pz","conf","L","vaschette"];
 const TIPI_ATTIVITA = ["Ristorante","Gastronomia","Negozio","Catering","Mensa","Privato"];
@@ -1005,6 +1045,7 @@ function ordiniAperti(){
 function render(){
   renderTabs();
   const v = $("#view");
+  document.body.dataset.accesso = String(Store.mode === "login");
   if(Store.mode === "login"){ v.innerHTML = viewLogin(); $("#fab").hidden = true; return; }
   const corpo = state.tab === "magazzino" ? viewMagazzino()
               : state.tab === "ordini"    ? viewOrdini()
@@ -1416,15 +1457,16 @@ function statoNotifiche(){
 
 function viewLogin(){
   return `
-    <h1 class="page-title">Accedi</h1>
-    <p class="page-sub">Il magazzino è condiviso: entra con l'account del pastificio.</p>
-    <div class="card">
-      <form id="loginForm" style="display:flex;flex-direction:column;gap:12px">
+    <svg class="accesso-marchio" viewBox="0 0 528 350" role="img" aria-label="Il Pastaio, pastificio artigianale"><use href="#marchio"/></svg>
+    <div class="accesso">
+      <h1>Accedi</h1>
+      <p class="accesso-intro">Il magazzino è condiviso fra i due punti vendita.</p>
+      <form id="loginForm">
         <div class="field"><label for="lgEmail">Email</label><input id="lgEmail" type="email" autocomplete="username" required></div>
         <div class="field"><label for="lgPwd">Password</label><input id="lgPwd" type="password" autocomplete="current-password" required></div>
-        <button class="btn btn-primary" type="submit" style="justify-content:center">Entra</button>
+        <button class="btn-accesso" type="submit">Entra</button>
       </form>
-      <p class="hint" style="margin-top:12px">Usa l'account del tuo punto vendita. Se non ricordi le credenziali, chiedi a chi gestisce il pastificio.</p>
+      <p class="accesso-nota">Si accede una volta sola: il dispositivo resta collegato.</p>
     </div>
   `;
 }
