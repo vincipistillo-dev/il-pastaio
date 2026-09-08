@@ -5,15 +5,25 @@
 create table if not exists public.articoli (
   id             text primary key,
   nome           text not null,
-  categoria      text,
+  sede           text,               -- punto vendita: Viale Alto Adige o Via Savonarola
+  gruppo         text,               -- sezione: Orecchiette, Agnolotti
+  ordine         integer default 0,  -- posizione nell'elenco, cambiata trascinando
   quantita       numeric default 0,
   unita          text,
   scorta_minima  numeric default 0,
   posizione      text,
+  categoria      text,
   scadenza       text,
   note           text,
   updated_at     timestamptz default now()
 );
+
+-- per chi aveva gia creato le tabelle con la versione precedente
+alter table public.articoli add column if not exists sede   text;
+alter table public.articoli add column if not exists gruppo text;
+alter table public.articoli add column if not exists ordine integer default 0;
+
+create index if not exists articoli_sede_idx on public.articoli (sede);
 
 create table if not exists public.attivita (
   id          text primary key,
