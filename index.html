@@ -508,6 +508,17 @@ code{font-family:var(--mono);font-size:12.5px;background:var(--surface-2);paddin
 
 /* riga articolo: nome, quantità, cestino */
 .item.art{grid-template-columns:1fr auto auto;gap:8px;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+.item.art.sola-lettura{grid-template-columns:1fr auto;padding:13px 14px;background:var(--surface-2)}
+.item.art.sola-lettura .item-main{cursor:default}
+.solalettura{
+  display:flex;align-items:center;gap:9px;margin-bottom:12px;
+  background:var(--info-soft);border-radius:var(--radius);
+  padding:10px 12px;font-size:12.5px;color:var(--info);
+}
+.solalettura svg{
+  width:16px;height:16px;flex:none;stroke:currentColor;fill:none;
+  stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;
+}
 .item.trascina{
   pointer-events:none;position:relative;z-index:3;will-change:transform;
   box-shadow:0 12px 26px -8px rgba(20,42,30,.5);
@@ -678,7 +689,7 @@ body[data-accesso="true"] main{
    ============================================================ */
 
 /* ---------- costanti di dominio ---------- */
-const VERSIONE = "2026-09-08 · 19";   // da alzare a ogni pubblicazione
+const VERSIONE = "2026-09-09 · 20";   // da alzare a ogni pubblicazione
 const SEDI = ["Viale Alto Adige","Via Savonarola"];
 const UNITA = ["kg","g","pz","conf","L","vaschette"];
 const TIPI_ATTIVITA = ["Ristorante","Gastronomia","Negozio","Catering","Mensa","Privato"];
@@ -760,6 +771,7 @@ const state = {
   giorno: todayISO(),
   mese: todayISO().slice(0, 7),
   settimana: "",
+  profilo: null,
   aperti: new Set(),
   gruppiChiusi: new Set(),
   calendarioChiuso: false
@@ -884,6 +896,7 @@ const Store = {
 
   async hydrate(){
     Store.mode = "sync";
+    await Store.leggiProfilo();
     const out = {articoli:[], attivita:[], ordini:[], conferme:[]};
     for(const t of TABELLE){
       const {data, error} = await Store.sb.from(t).select("*");
@@ -893,9 +906,35 @@ const Store = {
     }
     state.data = out;
     Store.ready = true;
+    /* si parte dal proprio punto vendita */
+    if(state.profilo && state.profilo.sede && SEDI.includes(state.profilo.sede)) state.sede = state.profilo.sede;
     setSync("on", "Sincronizzato");
     render();
     Store.subscribe();
+  },
+
+  /* chi sono e cosa posso toccare */
+  async leggiProfilo(){
+    state.profilo = null;
+    try {
+      const {data:{user}} = await Store.sb.auth.getUser();
+      if(!user || !user.email) return;
+      const {data} = await Store.sb.from("profili").select("*")
+        .ilike("email", user.email).maybeSingle();
+      state.profilo = {
+        email: user.email,
+        sede: data && data.sede ? data.sede : "",
+        admin: !!(data && data.admin)
+      };
+    } catch { /* senza profilo non si vede nulla: il server decide comunque */ }
+  },
+
+  /* le righe altrui diventano leggibili solo dopo la conferma: vanno richieste */
+  async ricaricaArticoli(){
+    const {data, error} = await Store.sb.from("articoli").select("*");
+    if(error) return;
+    state.data.articoli = (data || []).map(r => fromRow("articoli", r));
+    render();
   },
 
   subscribe(){
@@ -908,7 +947,11 @@ const Store = {
           const obj = fromRow(t, payload.new);
           const i = state.data[t].findIndex(x => x.id === obj.id);
           if(i >= 0) state.data[t][i] = obj; else state.data[t].unshift(obj);
-          if(t === "conferme") avvisaSeAltrui(obj);
+          if(t === "conferme"){
+            avvisaSeAltrui(obj);
+            /* con la conferma si apre il magazzino di quel punto vendita */
+            if(!possoScrivere(obj.sede)) Store.ricaricaArticoli();
+          }
         }
         render();
       });
@@ -1061,7 +1104,7 @@ function render(){
 
   const fab = $("#fab");
   const etichette = {magazzino:"Prodotto", ordini:"Ordine"};
-  fab.hidden = !etichette[state.tab];
+  fab.hidden = !etichette[state.tab] || (state.tab === "magazzino" && !possoScrivere(state.sede));
   if(!fab.hidden) $("#fabTxt").textContent = etichette[state.tab];
 }
 
@@ -1079,12 +1122,49 @@ function renderTabs(){
 /* ---------- magazzino ---------- */
 function sedeDi(a){ return SEDI.includes(a.sede) ? a.sede : SEDI[0]; }
 
+/* --- permessi ---
+   Rispecchiano le regole del server. Servono a non mostrare comandi che
+   verrebbero comunque rifiutati; la protezione vera sta sul database. */
+function confermaValida(sede){
+  const c = state.data.conferme
+    .filter(x => x.sede === sede && x.quando)
+    .sort((a, b) => String(b.quando).localeCompare(String(a.quando)))[0];
+  if(!c) return null;
+  const q = new Date(c.quando);
+  if(isNaN(q)) return null;
+  /* una conferma vale fino alle 10 del mattino del giorno dopo */
+  const scade = new Date(q.getFullYear(), q.getMonth(), q.getDate() + 1, 10, 0, 0);
+  return Date.now() < scade ? c : null;
+}
+function possoScrivere(sede){
+  if(Store.mode !== "sync") return true;          // in locale non ci sono ruoli
+  const p = state.profilo;
+  return !!p && (p.admin || sede === p.sede);
+}
+function possoLeggere(sede){
+  if(Store.mode !== "sync") return true;
+  const p = state.profilo;
+  if(!p) return false;
+  return p.admin || sede === p.sede || !!confermaValida(sede);
+}
+function quandoLeggibile(iso){
+  const d = new Date(iso);
+  if(isNaN(d)) return "";
+  const ora = d.toLocaleTimeString("it-IT", {hour:"2-digit", minute:"2-digit"});
+  const stessoGiorno = d.toDateString() === new Date().toDateString();
+  return stessoGiorno ? `oggi alle ${ora}`
+                      : `${d.toLocaleDateString("it-IT", {day:"numeric", month:"long"})} alle ${ora}`;
+}
+
 /* --- resoconto giornaliero del punto vendita --- */
 function confermaDiOggi(sede){
   const t = todayISO();
   return state.data.conferme.find(c => c.data === t && c.sede === sede) || null;
 }
 function bloccoConferma(){
+  const p = state.profilo;
+  /* si conferma solo il proprio banco: l'amministratore non ne ha uno */
+  if(Store.mode === "sync" && (!p || state.sede !== p.sede)) return "";
   const c = confermaDiOggi(state.sede);
   return `
     <div class="conferma">
@@ -1093,6 +1173,23 @@ function bloccoConferma(){
         ? `Resoconto di ${esc(state.sede)} inviato oggi alle <span class="num">${esc(oraDi(c.quando))}</span>.`
         : `Avvisa l'altro punto vendita che il magazzino di ${esc(state.sede)} è aggiornato.`}</p>
     </div>`;
+}
+
+function bannerSolaLettura(){
+  const c = confermaValida(state.sede);
+  return `<div class="solalettura">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8.5 11V8a3.5 3.5 0 0 1 7 0v3"/></svg>
+    <span>Sola lettura · situazione confermata ${c ? esc(quandoLeggibile(c.quando)) : ""}</span>
+  </div>`;
+}
+
+function magazzinoChiuso(){
+  const p = state.profilo;
+  if(Store.mode === "sync" && p && !p.admin && !p.sede)
+    return vuoto("Account non abilitato",
+      "A questo indirizzo non e ancora associato nessun punto vendita. Chiedi a chi gestisce il pastificio.");
+  return vuoto(`${state.sede} non ha ancora confermato`,
+    "Il magazzino dell'altro punto vendita si apre in sola lettura quando li premono Conferma situazione.");
 }
 
 /* conferme di oggi arrivate da un altro dispositivo e non ancora lette */
@@ -1148,6 +1245,8 @@ async function confermaSituazione(){
 }
 
 function viewMagazzino(){
+  const scrivo = possoScrivere(state.sede);
+  const leggo = possoLeggere(state.sede);
   const q = state.cercaArt.trim().toLowerCase();
   let arts = state.data.articoli.filter(a => sedeDi(a) === state.sede);
   if(q) arts = arts.filter(a => a.nome.toLowerCase().includes(q));
@@ -1155,10 +1254,12 @@ function viewMagazzino(){
   arts.sort((a,b) => (a.ordine ?? 9999) - (b.ordine ?? 9999) || a.nome.localeCompare(b.nome, "it"));
 
   let corpo;
-  if(!arts.length){
+  if(!leggo){
+    corpo = magazzinoChiuso();
+  } else if(!arts.length){
     corpo = vuoto("Nessun prodotto", q ? "Nessun risultato per questa ricerca." : `Aggiungi il primo prodotto di ${state.sede}.`);
   } else if(q){
-    corpo = `<div class="list">${arts.map(a => cardArticolo(a, true)).join("")}</div>`;   // cercando, elenco piatto
+    corpo = `<div class="list">${arts.map(a => cardArticolo(a, true, scrivo)).join("")}</div>`;   // cercando, elenco piatto
   } else {
     const gruppi = new Map();
     const sciolti = [];
@@ -1169,8 +1270,8 @@ function viewMagazzino(){
       gruppi.get(g).push(a);
     }
     corpo = `<div class="list">
-      ${[...gruppi].map(([nome, lista]) => sezioneGruppo(nome, lista)).join("")}
-      ${sciolti.map(a => cardArticolo(a)).join("")}
+      ${[...gruppi].map(([nome, lista]) => sezioneGruppo(nome, lista, scrivo)).join("")}
+      ${sciolti.map(a => cardArticolo(a, false, scrivo)).join("")}
     </div>`;
   }
 
@@ -1189,12 +1290,13 @@ function viewMagazzino(){
         </button>` : ""}
       </div>
     </div>
+    ${leggo && !scrivo ? bannerSolaLettura() : ""}
     ${corpo}
     ${bloccoConferma()}
   `;
 }
 
-function sezioneGruppo(nome, lista){
+function sezioneGruppo(nome, lista, scrivo){
   const aperto = !state.gruppiChiusi.has(nome);
   return `
     <section class="gruppo" data-aperto="${aperto}">
@@ -1203,11 +1305,18 @@ function sezioneGruppo(nome, lista){
         <span class="g-nome">${esc(nome)}</span>
         <span class="g-conta">${lista.length}</span>
       </button>
-      <div class="gruppo-corpo">${lista.map(a => cardArticolo(a)).join("")}</div>
+      <div class="gruppo-corpo">${lista.map(a => cardArticolo(a, false, scrivo)).join("")}</div>
     </section>`;
 }
 
-function cardArticolo(a, nomeIntero){
+function cardArticolo(a, nomeIntero, scrivo){
+  if(scrivo === false){
+    return `
+      <article class="item art sola-lettura" data-alert="${allerta(a)}">
+        <span class="item-main"><span class="item-name">${esc(etichettaArticolo(a, nomeIntero))}</span></span>
+        <span class="qsolo">${fmtQty(num(a.quantita))}</span>
+      </article>`;
+  }
   return `
     <article class="item art" data-alert="${allerta(a)}" data-id="${esc(a.id)}">
       <button class="item-main" type="button" data-edit-art="${a.id}">
@@ -1724,6 +1833,7 @@ async function salvaOrdineDaSchermo(){
 
 document.addEventListener("pointerdown", e => {
   if(state.tab !== "magazzino" || $("#overlay").dataset.open === "true") return;
+  if(!possoScrivere(state.sede)) return;          // il magazzino altrui non si riordina
   const riga = e.target.closest(".item.art");
   if(!riga || e.target.closest(".step, .del")) return;
   trascina.el = riga;
