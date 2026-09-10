@@ -165,7 +165,13 @@ body{touch-action:manipulation}
 .syncpill[data-state="err"]{color:#F0B9AE}
 .syncpill[data-state="err"] .dot{background:#E27A68}
 
-main{flex:1;padding:14px 14px calc(84px + env(safe-area-inset-bottom));width:100%;max-width:1120px;margin:0 auto}
+/* In fondo si lascia il posto al pulsante rotondo, che galleggia sopra il
+   contenuto: senza, l ultima riga gli finiva dietro.
+   barra in basso 56 + stacco 20 + pulsante 46 + respiro 18 */
+main{
+  flex:1;width:100%;max-width:1120px;margin:0 auto;
+  padding:14px 14px calc(140px + env(safe-area-inset-bottom));
+}
 
 /* bottom nav → desktop rail */
 .tabbar{
@@ -623,7 +629,7 @@ body[data-accesso="true"] main{
   }
   .tabbar button[aria-current="true"]{background:rgba(255,255,255,.09);color:var(--grano-bright);border-top-color:transparent}
   .tab-badge{position:static;transform:none;margin-left:auto}
-  main{margin-left:236px;padding:26px 30px 60px;max-width:1060px}
+  main{margin-left:236px;padding:26px 30px 100px;max-width:1060px}
   .dayhead{top:0;padding-top:10px}
   .fab{bottom:28px;right:34px}
   .stats{grid-template-columns:repeat(4,1fr)}
@@ -689,7 +695,7 @@ body[data-accesso="true"] main{
    ============================================================ */
 
 /* ---------- costanti di dominio ---------- */
-const VERSIONE = "2026-09-09 · 20";   // da alzare a ogni pubblicazione
+const VERSIONE = "2026-09-10 · 21";   // da alzare a ogni pubblicazione
 const SEDI = ["Viale Alto Adige","Via Savonarola"];
 const UNITA = ["kg","g","pz","conf","L","vaschette"];
 const TIPI_ATTIVITA = ["Ristorante","Gastronomia","Negozio","Catering","Mensa","Privato"];
