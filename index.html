@@ -560,12 +560,15 @@ body[data-accesso="true"]{background:#147A4B}
 body[data-accesso="true"] .topbar,
 body[data-accesso="true"] .tabbar,
 body[data-accesso="true"] .fab{display:none!important}
+/* niente scorrimento: la schermata e alta esattamente quanto lo schermo */
+html[data-accesso="true"],
+html[data-accesso="true"] body{height:100%;overflow:hidden}
 body[data-accesso="true"] main{
-  margin:0;max-width:none;min-height:100dvh;
+  margin:0;max-width:none;height:100dvh;min-height:0;overflow:hidden;
   padding:28px 20px calc(28px + env(safe-area-inset-bottom));
   display:flex;flex-direction:column;align-items:center;justify-content:center;gap:26px;
 }
-.accesso-marchio{display:block;width:min(230px,58vw);height:auto;color:#fff;flex:none}
+.accesso-marchio{display:block;width:min(230px,58vw,30dvh);height:auto;color:#fff;flex:none}
 .accesso{
   background:#fff;border-radius:20px;padding:24px 20px;
   width:100%;max-width:350px;color:#147A4B;
@@ -712,7 +715,7 @@ body[data-accesso="true"] main{
    ============================================================ */
 
 /* ---------- costanti di dominio ---------- */
-const VERSIONE = "2026-09-19 · 26";   // da alzare a ogni pubblicazione
+const VERSIONE = "2026-09-19 · 27";   // da alzare a ogni pubblicazione
 const SEDI = ["Viale Alto Adige","Via Savonarola"];
 const UNITA = ["kg","g","pz","conf","L","vaschette"];
 const TIPI_ATTIVITA = ["Ristorante","Gastronomia","Negozio","Catering","Mensa","Privato"];
@@ -1117,7 +1120,7 @@ function ordiniAperti(){
 function render(){
   renderTabs();
   const v = $("#view");
-  document.body.dataset.accesso = String(Store.mode === "login");
+  document.documentElement.dataset.accesso = document.body.dataset.accesso = String(Store.mode === "login");
   if(Store.mode === "login"){ v.innerHTML = viewLogin(); $("#fab").hidden = true; return; }
   const corpo = state.tab === "magazzino" ? viewMagazzino()
               : state.tab === "ordini"    ? viewOrdini()
