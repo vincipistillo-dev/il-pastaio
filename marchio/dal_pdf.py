@@ -100,6 +100,28 @@ def pezzo_svg(disegni, riquadro, id_, bianco_pieno=False, margine=1.5):
     return {'id': id_, 'larg': L, 'alt': A, 'n': len(scelti), 'defs': defs, 'corpo': corpo}
 
 
+def scritta_svg(disegni, id_='scritta', margine=1.0):
+    """IL PASTAIO da solo, per la barra in alto.
+
+    Fra la A e la S il grafico lascia uno stacco largo (7,7 punti contro i 2-3
+    delle altre coppie): nel marchio completo ci scende la punta della giacca.
+    Presa da sola la scritta si leggerebbe "PA STAIO", quindi qui le lettere
+    dalla S in poi vengono accostate di 5 punti. Le forme restano quelle originali.
+    """
+    lettere = [d for d in disegni if 'f' in d['type']
+               and 412 <= d['rect'].y0 and d['rect'].y1 <= 460
+               and 355 <= d['rect'].x0 and d['rect'].x1 <= 636]
+    ACCOSTA, DA_X = 5.0, 486
+    bx0, by0, bx1, by1 = ingombro(lettere, margine)
+    corpo = ''
+    for d in lettere:
+        dx = bx0 + (ACCOSTA if d['rect'].x0 >= DA_X else 0)
+        corpo += elemento(d, dx, by0, 'currentColor', 'currentColor', False)
+    L, A = (bx1 - bx0) - ACCOSTA, by1 - by0
+    return {'id': id_, 'larg': L, 'alt': A, 'n': len(lettere), 'defs': '',
+            'corpo': f'<g id="{id_}">{corpo}</g>'}
+
+
 def estrai():
     doc = pymupdf.open(PDF)
     disegni = doc[0].get_drawings()
@@ -107,6 +129,7 @@ def estrai():
         'marchio': pezzo_svg(disegni, PEZZI['marchio'], 'marchio'),
         'soci':    pezzo_svg(disegni, PEZZI['soci'], 'soci'),
         'claim':   pezzo_svg(disegni, PEZZI['claim'], 'claim', bianco_pieno=True),
+        'scritta': scritta_svg(disegni),
     }
 
 

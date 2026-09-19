@@ -1,64 +1,60 @@
 # -*- coding: utf-8 -*-
-"""Sostituisce nell'app il marchio ricostruito con quello originale del PDF."""
+"""Porta nell'app il marchio originale del PDF.
+
+Si puo rilanciare quante volte serve: se il grafico manda una versione nuova
+del PDF, basta sostituire il file e lanciare `python innesta.py`.
+"""
 import io, os, re, sys
-sys.path.insert(0, os.path.dirname(__file__))
-os.chdir(os.path.dirname(__file__))
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+os.chdir(os.path.dirname(os.path.abspath(__file__)))
 import pymupdf
 from dal_pdf import estrai, seleziona, ingombro, PEZZI
 
 INDEX = os.path.join('..', 'index.html')
 pezzi = estrai()
-m, soci, claim = pezzi['marchio'], pezzi['soci'], pezzi['claim']
+m, soci, claim, scritta = (pezzi[k] for k in ('marchio', 'soci', 'claim', 'scritta'))
 
 # lo stemma per la barra in alto: il rombo col pastaio, fino alle ali del filetto
 d = pymupdf.open('Il Pastaio-5.pdf')[0].get_drawings()
 bx0, by0, _, _ = ingombro(seleziona(d, PEZZI['marchio']), 1.5)
 S = (405, 285.5, 590, 413)                        # in punti sulla pagina
 stemma_vb = f'{S[0]-bx0:.2f} {S[1]-by0:.2f} {S[2]-S[0]:.2f} {S[3]-S[1]:.2f}'
-print('viewBox stemma:', stemma_vb)
-
 vb = lambda p: f'0 0 {p["larg"]:.2f} {p["alt"]:.2f}'
+
 sprite = ('<!-- Marchio originale, dal file di Illustrator del grafico: curve vere, non ricostruite.\n'
           '     Generato da marchio/innesta.py: per aggiornarlo si rilancia quello, non si tocca qui. -->\n'
           '<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">\n'
-          f'  <defs>{m["defs"]}{soci["defs"]}{claim["defs"]}</defs>\n'
-          f'  {m["corpo"]}\n  {soci["corpo"]}\n  {claim["corpo"]}\n'
+          f'  <defs>{m["defs"]}{soci["defs"]}{claim["defs"]}{scritta["defs"]}</defs>\n'
+          f'  {m["corpo"]}\n  {soci["corpo"]}\n  {claim["corpo"]}\n  {scritta["corpo"]}\n'
           '</svg>\n\n')
 
 s = io.open(INDEX, encoding='utf-8').read()
 
-# 1) lo sprite
-i = s.index('<!-- Marchio ricavato dalla stampa')
-j = s.index('<div class="splash"', i)
-s = s[:i] + sprite + s[j:]
+# 1) lo sprite, qualunque versione ci fosse prima
+inizio = re.search(r'<!-- Marchio (originale|ricavato)', s).start()
+fine = s.index('<div class="splash"', inizio)
+s = s[:inizio] + sprite + s[fine:]
 
-# 2) apertura: marchio, riga dei soci e claim, tutti originali
-vecchio = re.search(r'<svg class="marchio-completo"[^>]*>.*?</svg>\s*<p class="claim">La nobile arte di fare la pasta</p>', s, re.S).group(0)
-nuovo = (f'<svg class="marchio-completo" viewBox="{vb(m)}" role="img" aria-label="Il Pastaio, pastificio artigianale"><use href="#marchio"/></svg>\n'
-         f'    <svg class="soci" viewBox="{vb(soci)}" role="img" aria-label="di Pistillo F. &amp; Tesse L."><use href="#soci"/></svg>\n'
-         f'    <svg class="claim" viewBox="{vb(claim)}" role="img" aria-label="La nobile arte di fare la pasta"><use href="#claim"/></svg>')
-s = s.replace(vecchio, nuovo, 1)
+# 2) proporzioni aggiornate ovunque il marchio sia richiamato
+for cls, v in (('marchio-completo', vb(m)), ('accesso-marchio', vb(m)), ('soci', vb(soci)),
+               ('claim', vb(claim)), ('marchio-stemma', stemma_vb), ('brand-scritta', vb(scritta))):
+    s = re.sub(rf'(<svg class="{cls}" viewBox=")[^"]*(")', rf'\g<1>{v}\g<2>', s)
 
-# 3) barra in alto e schermata di accesso
-s = re.sub(r'<svg class="marchio-stemma" viewBox="[^"]*"', f'<svg class="marchio-stemma" viewBox="{stemma_vb}"', s, count=1)
-s = re.sub(r'<svg class="accesso-marchio" viewBox="[^"]*"', f'<svg class="accesso-marchio" viewBox="{vb(m)}"', s, count=1)
+# 3) barra in alto: "IL PASTAIO" con le lettere vere al posto del Bodoni
+vecchio = '<div class="brand-name">IL PASTAIO</div>'
+if vecchio in s:
+    s = s.replace(vecchio, f'<svg class="brand-scritta" viewBox="{vb(scritta)}" role="img" '
+                           f'aria-label="Il Pastaio"><use href="#scritta"/></svg>', 1)
 
-# 4) il claim ora e un disegno: misure da disegno, non da testo
-s = re.sub(r'\.splash \.claim\{.*?\n\}\n',
-           '.splash .soci{\n'
-           '  display:block;width:min(170px,44vw);height:auto;margin-top:12px;color:var(--murgia);\n'
-           '  opacity:0;animation:riseIn .8s .3s ease-out forwards;\n'
-           '}\n'
-           '.splash .claim{\n'
-           '  display:block;width:min(300px,76vw);height:auto;margin-top:22px;color:var(--murgia);\n'
-           '  opacity:0;animation:riseIn .9s .55s ease-out forwards;\n'
-           '}\n', s, count=1, flags=re.S)
-s = s.replace('.splash .marchio-completo,.splash .claim{animation:none;opacity:1}',
-              '.splash .marchio-completo,.splash .soci,.splash .claim{animation:none;opacity:1}', 1)
-
-# 5) il corsivo di Google non serve piu: il claim e disegnato
-s = s.replace('&family=Petit+Formal+Script', '', 1)
+# 4) misure della scritta nella barra
+if '.brand-scritta{' not in s:
+    s = s.replace('.brand-txt{min-width:0}',
+                  '.brand-txt{min-width:0}\n'
+                  '/* le lettere vere del marchio: altezza fissa, larghezza dalle proporzioni */\n'
+                  '.brand-scritta{display:block;height:17px;width:auto;aspect-ratio:263.02/35.89;color:var(--head-ink);overflow:hidden}', 1)
+    s = s.replace('  .brand-name{font-size:23px}', '  .brand-scritta{height:21px}', 1)
 
 io.open(INDEX, 'w', encoding='utf-8').write(s)
-print('index.html:', round(os.path.getsize(INDEX) / 1024), 'KB')
-print('riferimenti residui a Petit Formal Script:', s.count('Petit+Formal'))
+print('viewBox stemma :', stemma_vb)
+print('scritta        :', f'{scritta["larg"]:.1f} x {scritta["alt"]:.1f} pt')
+print('index.html     :', round(os.path.getsize(INDEX) / 1024), 'KB')
