@@ -7,9 +7,10 @@
 
 <!-- Installazione come app: manifesto, icone e service worker. Senza questi
      Chrome su Android offre solo una scorciatoia al link, non l'installazione. -->
-<link rel="manifest" href="manifest.webmanifest">
-<link rel="icon" href="icona-192.png" type="image/png" sizes="192x192">
-<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="manifest" href="manifest.webmanifest?v=2">
+<link rel="icon" href="logo-v2-192.png" type="image/png" sizes="192x192">
+<link rel="icon" href="logo-v2-512.png" type="image/png" sizes="512x512">
+<link rel="apple-touch-icon" sizes="180x180" href="logo-v2-apple-180.png">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -711,7 +712,7 @@ body[data-accesso="true"] main{
    ============================================================ */
 
 /* ---------- costanti di dominio ---------- */
-const VERSIONE = "2026-09-19 · 25";   // da alzare a ogni pubblicazione
+const VERSIONE = "2026-09-19 · 26";   // da alzare a ogni pubblicazione
 const SEDI = ["Viale Alto Adige","Via Savonarola"];
 const UNITA = ["kg","g","pz","conf","L","vaschette"];
 const TIPI_ATTIVITA = ["Ristorante","Gastronomia","Negozio","Catering","Mensa","Privato"];

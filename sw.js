@@ -9,7 +9,7 @@
  * manca si usa la copia. Cosi un aggiornamento non resta mai bloccato in
  * memoria, che e il difetto classico delle app installate.
  */
-const DEPOSITO = "pastaio-v1";
+const DEPOSITO = "pastaio-v2";
 
 self.addEventListener("install", () => self.skipWaiting());
 

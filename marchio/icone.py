@@ -41,10 +41,14 @@ def icona(lato, quota):
 
 # nella zona sicura il marchio deve stare tutto dentro un cerchio di diametro 80%:
 # con queste proporzioni la larghezza massima e circa il 65% del lato
+# I browser tengono in memoria le icone per indirizzo, e molto a lungo: se il
+# disegno cambia, il nome del file deve cambiare con lui, altrimenti telefoni e
+# segnalibri continuano a mostrare quella vecchia. Da qui il numero nel nome.
+V = 2
 USCITE = [
-    ('icona-192.png', 192, 0.84), ('icona-512.png', 512, 0.84),
-    ('icona-maskable-192.png', 192, 0.62), ('icona-maskable-512.png', 512, 0.62),
-    ('apple-touch-icon.png', 180, 0.82),         # iOS arrotonda gli angoli ma non ritaglia
+    (f'logo-v{V}-192.png', 192, 0.84), (f'logo-v{V}-512.png', 512, 0.84),
+    (f'logo-v{V}-maskable-192.png', 192, 0.62), (f'logo-v{V}-maskable-512.png', 512, 0.62),
+    (f'logo-v{V}-apple-180.png', 180, 0.82),     # iOS arrotonda gli angoli ma non ritaglia
 ]
 for nome, lato, quota in USCITE:
     p = os.path.join(BASE, nome)
